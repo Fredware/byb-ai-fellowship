@@ -134,29 +134,17 @@ void moveFinger(int finger, int pos)
 /********************************************************************* SETUP */
 /*****************************************************************************/
 void setup() {
+  /* ----------------------------------------------------------------------- */
   Serial.begin( BAUD_RATE);
   int period_ms = round( 1000.0 / SAMPLING_FREQ);
   sampling_timer.every( period_ms, debug_timer);
-  Serial.print("I'm alive");
-  /*******/
-  // put your setup code here, to run once:
-//    Serial.begin(115200);
-    Serial.println("Edge Impulse Inferencing Demo");
-    /****/
-/***POCBLE**/
-  // Open Hand
-  for (int f=0; f < SERVOS; f++)
-    moveFinger (f, 0);
-
-  // Wait for servos to respond
-  delay (500);
-
-  // Relax servos
-  for (int f=0; f < SERVOS; f++)
-    myservo[f].detach();
-
+  /* ----------------------------------------------------------------------- */
+  Serial.println("Edge Impulse Inferencing Demo");
+  /* ----------------------------------------------------------------------- */
+  for (int f = 0; f < SERVOS; f++) moveFinger (f, 0);   // Open Hand
+  delay (500);                                          // Wait for servos to respond
+  for (int f = 0; f < SERVOS; f++) myservo[f].detach(); // Relax servos
   delay (2000);
-/***/
 }
 
 /*****************************************************************************/
