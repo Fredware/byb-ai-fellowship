@@ -27,6 +27,15 @@
 /* ------------------------------------------------------------------------- */
 
 /* Motor Control ----------------------------------------------------------- */
+#define THUMB_IDX 4
+#define INDEX_IDX 0
+#define MIDDLE_IDX 1
+#define RING_IDX 3
+#define PINKY_IDX 2
+
+#define OPEN 2
+#define CLOSE 1
+
 #define SERVOS 5 // the number of servos
 #define SRV_CLOSE 0 // angle for closed finger
 #define SRV_OPEN 180 // angle for open finger
@@ -70,14 +79,15 @@ static const float features[] = {
 
 /* 200Hz Analog Sampler ---------------------------------------------------- */
 bool debug_timer(void *){
-  Serial.println("Data: ");
+  Serial.println("ANALOG SAMPLING: START");
+  Serial.print("\tData: ");
   for (int chan=CH_01; chan <= CH_05; chan++){
     temp_data = analogRead(chan);
     Serial.print(temp_data);
-    Serial.print(", ");
+    if( chan != CH_05) Serial.print(", ");
   }
-  Serial.println();  
-  
+  Serial.println();
+  Serial.println("ANALOG SAMPLING: DONE");  
   return true;
 }
 /* ------------------------------------------------------------------------- */
@@ -157,7 +167,7 @@ void setup() {
 void loop() {
   sampling_timer.tick();
   /* ----------------------------------------------------------------------- */
-  ei_printf("Edge Impulse standalone inferencing (Arduino)\n");
+  ei_printf("<--- THE LOOP STARTS HERE --->\n");
   
   if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
     ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
@@ -172,10 +182,12 @@ void loop() {
   signal_t features_signal;
   features_signal.total_length = sizeof(features) / sizeof(features[0]);
   features_signal.get_data = &raw_feature_get_data;
-  
+
+  Serial.println("INFERENCING: START");
   // invoke the impulse
   EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
   ei_printf("run_classifier returned: %d\n", res);
+  Serial.println("INFERENCING: END");
 
   if (res != 0) return;
   
@@ -211,8 +223,10 @@ void loop() {
   #endif
   
   delay(1000);
+  
   /* ------------------------------------------------------------------------- */
   /*Get the prediction with the highest probability*/
+  Serial.println("CLASS EXTRACTION: START");
   float max_val = 0;
   size_t max_idx = 0;
   for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
@@ -225,41 +239,63 @@ void loop() {
       max_idx = i;
     }
   }
-  Serial.print("My predicted class is: ");
+  Serial.println("CLASS EXTRACTION: END");
+  Serial.print("\tMy predicted class is: ");
   Serial.print(result.classification[max_idx].label);
   Serial.print(". Its value is: ");
   Serial.print(max_val);
   Serial.print(". Its index is: ");
   Serial.println(max_idx);
   /* ------------------------------------------------------------------------- */
-  unsigned long time=0;
   
-  finalReading1 = analogRead(A0);
-  finalReading2 = analogRead(A1);
-  finalReading3 = analogRead(A2);
-  finalReading4 = analogRead(A4);
-  
+  unsigned long time=0; 
+ 
   delay(10);
 
+  // Detach servo if time since last attach exceeds 750 ms.
   for (int i=0; i < SERVOS; i++) {
-    // Detach servo if time since last attach exceeds 750 ms.
     if (millis() - tmsServo_Attached[i] > 750) {
       myservo[i].detach();
     }
   }
-
   time = millis(); 
-  if (finalReading1>500){
-    moveFinger (1, 1);
-    moveFinger (4, 1);
-    moveFinger (5, 1);
-    delay(2000);
-    moveFinger (1, 0);
-    moveFinger (4, 0);
-    moveFinger (5, 0);
-//    myservo[1].detach();
-//    myservo[4].detach();
-//    myservo[5].detach();
-    delay(2000);
+
+  Serial.println("MOTOR CONTROL: START");
+  switch(max_idx){
+    case THUMB_IDX:
+      moveFinger (0, CLOSE);
+      delay(2000);
+      moveFinger (0, OPEN);
+      delay(2000);
+      break;
+    case INDEX_IDX:
+      moveFinger (0, CLOSE);
+      delay(2000);
+      moveFinger (0, OPEN);
+      delay(2000);      
+      break;
+    case MIDDLE_IDX:
+      moveFinger (0, CLOSE);
+      delay(2000);
+      moveFinger (0, OPEN);
+      delay(2000);    
+      break;
+    case RING_IDX:
+      moveFinger (0, CLOSE);
+      delay(2000);
+      moveFinger (0, OPEN);
+      delay(2000);
+      break;
+    case PINKY_IDX:
+      moveFinger (0, CLOSE);
+      delay(2000);
+      moveFinger (0, OPEN);
+      delay(2000);
+      break;
+    default:
+      Serial.println("Something went wrong (x_x)");
+      break;
   }
+  Serial.println("MOTOR CONTROL: END");
+  Serial.println("<--- THE LOOP ENDS HERE --->");
 }
