@@ -212,6 +212,26 @@ void loop() {
   
   delay(1000);
   /* ------------------------------------------------------------------------- */
+  /*Get the prediction with the highest probability*/
+  float max_val = 0;
+  size_t max_idx = 0;
+  for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
+    if (i==0){
+      max_val = result.classification[i].value;
+      max_idx = 0;
+    }
+    if(result.classification[i].value > max_val){
+      max_val = result.classification[i].value;
+      max_idx = i;
+    }
+  }
+  Serial.print("My predicted class is: ");
+  Serial.print(result.classification[max_idx].label);
+  Serial.print(". Its value is: ");
+  Serial.print(max_val);
+  Serial.print(". Its index is: ");
+  Serial.println(max_idx);
+  /* ------------------------------------------------------------------------- */
   unsigned long time=0;
   
   finalReading1 = analogRead(A0);
