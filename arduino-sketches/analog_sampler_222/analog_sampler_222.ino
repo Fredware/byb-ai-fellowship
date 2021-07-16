@@ -269,27 +269,27 @@ void loop() {
       delay(2000);
       break;
     case INDEX_IDX:
-      moveFinger (0, CLOSE);
+      moveFinger (1, CLOSE);
       delay(2000);
-      moveFinger (0, OPEN);
+      moveFinger (1, OPEN);
       delay(2000);      
       break;
     case MIDDLE_IDX:
-      moveFinger (0, CLOSE);
+      moveFinger (2, CLOSE);
       delay(2000);
-      moveFinger (0, OPEN);
+      moveFinger (2, OPEN);
       delay(2000);    
       break;
     case RING_IDX:
-      moveFinger (0, CLOSE);
+      moveFinger (3, CLOSE);
       delay(2000);
-      moveFinger (0, OPEN);
+      moveFinger (3, OPEN);
       delay(2000);
       break;
     case PINKY_IDX:
-      moveFinger (0, CLOSE);
+      moveFinger (4, CLOSE);
       delay(2000);
-      moveFinger (0, OPEN);
+      moveFinger (4, OPEN);
       delay(2000);
       break;
     default:
