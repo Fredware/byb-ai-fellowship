@@ -216,13 +216,6 @@ void setup() {
 /*****************************************************************************/
 /*****************************************************************************/
 void loop() {
-//  Serial.println("<--- THE LOOP STARTS HERE --->");
-//  Serial.println("\tANALOG SAMPLING: CHECK");
-//  if( (millis() - analog_read_time) > 4){
-//  analog_read_time = millis();
-//  Serial.print("\tANALOG SAMPLING: START ");
-//  Serial.println(millis());
-//  Serial.print("\t\tData: ");
   
   float temp_data = 0;
   float sum[5]={0,0,0,0,0};
@@ -234,25 +227,20 @@ void loop() {
       temp_data = temp_data - means[j];
       temp_data = abs(temp_data);
       sum[j]+= temp_data;
-//      Serial.print(temp_data);
-//      Serial.print(" ");
+      if( i == ( FRAME_LEN -1)){
+        sum[j] *= alpha[j];
+        Serial.print(sum[j]);
+        Serial.print(",");
+      }
     }
-//    Serial.println();
+    Serial.println();
     delay(4);
   }
-//  Serial.print("m values: ");
-//  Serial.print(1.0);
-//  Serial.print(" ");
-  for(int j = 0; j < N_CHANS; j++){
-//    Serial.print(sum[j]);
-//    Serial.print(" ");
-    sum[j] *= alpha[j];
-    Serial.print(sum[j]);
-    Serial.print(",");
-  }
+
+//  for(int j = 0; j < N_CHANS; j++){
+//  }
 //  Serial.print(-0.5);
 //  Serial.print(" ");
-  Serial.println();
 //  for (int chan=CH_01; chan <= CH_05; chan++){
 //    temp_data = analogRead(chan);
 //    switch(chan){
