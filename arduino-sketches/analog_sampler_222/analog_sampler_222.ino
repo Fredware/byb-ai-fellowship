@@ -166,9 +166,9 @@ void moveFinger(int finger, int pos)
 void setup() {
   /* ----------------------------------------------------------------------- */
   Serial.begin( BAUD_RATE);
-  Serial.println("============================");
-  Serial.println("Hacker Hand Integration Demo");
-  Serial.println("============================");
+  Serial.println("====================================");
+  Serial.println("=== Hacker Hand Integration Demo ===");
+  Serial.println("====================================");
   /* ----------------------------------------------------------------------- */
   for (int f = 0; f < SERVOS; f++) moveFinger (f, OPEN);  // Open Hand
   delay (500);                                            // Wait for servos
