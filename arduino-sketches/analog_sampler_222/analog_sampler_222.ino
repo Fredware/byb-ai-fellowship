@@ -9,10 +9,12 @@
 */
 /*******/
 /* Includes ---------------------------------------------------------------- */
+#include "CircularBuffer.h"
 #include <a5c5f-env-norm-55-007_inferencing.h>
 #include <arduino-timer.h>
 #include <Arduino_LSM9DS1.h>
 #include <Servo.h>  // the servo library
+
 
 
 /* 200Hz Analog Sampler ---------------------------------------------------- */
@@ -40,6 +42,8 @@
 #define SRV_CLOSE 0 // angle for closed finger
 #define SRV_OPEN 180 // angle for open finger
 
+#define BUFFER_SIZE 66
+
 int finalReading1;
 int finalReading2;
 int finalReading3;
@@ -54,6 +58,16 @@ unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used t
 unsigned long previousTime = 0;
 
 Servo myservo[SERVOS];
+/* ------------------------------------------------------------------------- */
+
+/* Circular Buffer ---------------------------------------------------- */
+unsigned long analog_read_time;
+
+CircularBuffer<float, BUFFER_SIZE> buffer_ch01;
+CircularBuffer<float, BUFFER_SIZE> buffer_ch02;
+CircularBuffer<float, BUFFER_SIZE> buffer_ch03;
+CircularBuffer<float, BUFFER_SIZE> buffer_ch04;
+CircularBuffer<float, BUFFER_SIZE> buffer_ch05;
 /* ------------------------------------------------------------------------- */
 
 
@@ -145,37 +159,82 @@ void moveFinger(int finger, int pos)
 /* ------------------------------------------------------------------------- */
 
 /*****************************************************************************/
+/*****************************************************************************/
 /********************************************************************* SETUP */
+/*****************************************************************************/
 /*****************************************************************************/
 void setup() {
   /* ----------------------------------------------------------------------- */
   Serial.begin( BAUD_RATE);
-  int period_ms = round( 1000.0 / SAMPLING_FREQ);
-  sampling_timer.every( period_ms, debug_timer);
+  Serial.println("============================");
+  Serial.println("Hacker Hand Integration Demo");
+  Serial.println("============================");
   /* ----------------------------------------------------------------------- */
-  Serial.println("Edge Impulse Inferencing Demo");
-  /* ----------------------------------------------------------------------- */
-  for (int f = 0; f < SERVOS; f++) moveFinger (f, 0);   // Open Hand
-  delay (500);                                          // Wait for servos to respond
-  for (int f = 0; f < SERVOS; f++) myservo[f].detach(); // Relax servos
+  for (int f = 0; f < SERVOS; f++) moveFinger (f, OPEN);  // Open Hand
+  delay (500);                                            // Wait for servos
+  for (int f = 0; f < SERVOS; f++) myservo[f].detach();   // Relax servos
   delay (2000);
+  /* ----------------------------------------------------------------------- */
+  analog_read_time = millis();  //Initialize reference timestamp
 }
 
 /*****************************************************************************/
+/*****************************************************************************/
 /********************************************************************** LOOP */
 /*****************************************************************************/
+/*****************************************************************************/
 void loop() {
-  sampling_timer.tick();
+  Serial.println("<--- THE LOOP STARTS HERE --->");
+  Serial.println("\tANALOG SAMPLING: CHECK");
+  if( (millis() - analog_read_time) > 4){
+    analog_read_time = millis();
+    Serial.print("\tANALOG SAMPLING: START ");
+    Serial.println(millis());
+    Serial.print("\t\tData: ");
+    for (int chan=CH_01; chan <= CH_05; chan++){
+      temp_data = analogRead(chan);
+      switch(chan){
+        case CH_01:
+          buffer_ch01.push(temp_data);
+          Serial.print(buffer_ch01.last());
+          Serial.print(", ");
+          break;
+        case CH_02:
+          buffer_ch02.push(temp_data);
+          Serial.print(buffer_ch02.last());
+          Serial.print(", ");
+          break;
+        case CH_03:
+          buffer_ch03.push(temp_data);
+          Serial.print(buffer_ch03.last());
+          Serial.print(", ");
+          break;
+        case CH_04:
+          buffer_ch04.push(temp_data);
+          Serial.print(buffer_ch04.last());
+          Serial.print(", ");
+          break;
+        case CH_05:
+          buffer_ch05.push(temp_data);
+          Serial.print(buffer_ch05.last());
+          Serial.println();
+          break;
+        default:
+          Serial.println("\t\tERROR DURING ANALOG SAMPLING");
+          break;
+      }
+    }
+  }
+  Serial.println("\tANALOG SAMPLING: DONE");
+ 
   /* ----------------------------------------------------------------------- */
-  ei_printf("<--- THE LOOP STARTS HERE --->\n");
-  
   if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
     ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
               EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
     delay(1000);
     return;
   }
-  
+ 
   ei_impulse_result_t result = { 0 };
   
   // the features are stored into flash, and we don't want to load everything into RAM
@@ -183,50 +242,24 @@ void loop() {
   features_signal.total_length = sizeof(features) / sizeof(features[0]);
   features_signal.get_data = &raw_feature_get_data;
 
-  Serial.println("INFERENCING: START");
+  Serial.println("\tCLASSIFICATION: START");
   // invoke the impulse
   EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
-  ei_printf("run_classifier returned: %d\n", res);
-  Serial.println("INFERENCING: END");
 
   if (res != 0) return;
-  
-  // print the predictions
-  ei_printf("Predictions ");
-  ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
-             result.timing.dsp, result.timing.classification, result.timing.anomaly);
-  ei_printf(": \n");
-  ei_printf("[");
-  
-  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-    ei_printf("%.5f", result.classification[ix].value);
-    #if EI_CLASSIFIER_HAS_ANOMALY == 1
-    ei_printf(", ");
-    #else
-    if (ix != EI_CLASSIFIER_LABEL_COUNT - 1) {
-      ei_printf(", ");
-    }
-    #endif
-  }
-  
-  #if EI_CLASSIFIER_HAS_ANOMALY == 1
-  ei_printf("%.3f", result.anomaly);
-  #endif
-  ei_printf("]\n");
 
   // human-readable predictions
   for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-    ei_printf("    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
+    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
   }
   #if EI_CLASSIFIER_HAS_ANOMALY == 1
   ei_printf("    anomaly score: %.3f\n", result.anomaly);
   #endif
-  
-  delay(1000);
+  Serial.println("\tCLASSIFICATION: END");  
   
   /* ------------------------------------------------------------------------- */
   /*Get the prediction with the highest probability*/
-  Serial.println("CLASS EXTRACTION: START");
+  Serial.println("\tCLASS SELECTION: START");
   float max_val = 0;
   size_t max_idx = 0;
   for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
@@ -239,63 +272,68 @@ void loop() {
       max_idx = i;
     }
   }
-  Serial.println("CLASS EXTRACTION: END");
-  Serial.print("\tMy predicted class is: ");
-  Serial.print(result.classification[max_idx].label);
-  Serial.print(". Its value is: ");
-  Serial.print(max_val);
-  Serial.print(". Its index is: ");
+  Serial.print("\t\tPREDICTED CLASS: ");
+  Serial.println(result.classification[max_idx].label);
+  Serial.print("\t\tCONFIDENCE: ");
+  Serial.println(max_val);
+  Serial.print("\t\tINDEX: ");
   Serial.println(max_idx);
-  /* ------------------------------------------------------------------------- */
+  Serial.println("\tCLASS SELECTION: END");
   
-  unsigned long time=0; 
- 
-  delay(10);
-
-  // Detach servo if time since last attach exceeds 750 ms.
+  /* ------------------------------------------------------------------------- */
+  // Detach servo if time since last attach exceeds 500 ms.
   for (int i=0; i < SERVOS; i++) {
-    if (millis() - tmsServo_Attached[i] > 750) {
+    if (millis() - tmsServo_Attached[i] > 500) {
       myservo[i].detach();
     }
   }
-  time = millis(); 
 
-  Serial.println("MOTOR CONTROL: START");
+  Serial.println("\tMOTOR CONTROL: START");
   switch(max_idx){
     case THUMB_IDX:
       moveFinger (0, CLOSE);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
       moveFinger (0, OPEN);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
       break;
     case INDEX_IDX:
       moveFinger (1, CLOSE);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
       moveFinger (1, OPEN);
-      delay(2000);      
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);      
       break;
     case MIDDLE_IDX:
       moveFinger (2, CLOSE);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
       moveFinger (2, OPEN);
-      delay(2000);    
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);    
       break;
     case RING_IDX:
       moveFinger (3, CLOSE);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
       moveFinger (3, OPEN);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
       break;
     case PINKY_IDX:
       moveFinger (4, CLOSE);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
       moveFinger (4, OPEN);
-      delay(2000);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
       break;
     default:
-      Serial.println("Something went wrong (x_x)");
+      Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
       break;
   }
-  Serial.println("MOTOR CONTROL: END");
+  Serial.println("\tMOTOR CONTROL: END");
   Serial.println("<--- THE LOOP ENDS HERE --->");
 }
