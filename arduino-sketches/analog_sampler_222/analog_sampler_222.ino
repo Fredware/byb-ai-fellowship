@@ -30,6 +30,10 @@
 
 #define N_CHANS 5
 #define FRAME_LEN 20
+#define FEATURE_LEN 11
+#define SIGNAL_LEN 80
+#define STEP_LEN 6
+#define THRESHOLD 7.05
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -101,8 +105,7 @@ uint32_t temp_data;
 
 /* Inference Model --------------------------------------------------------- */
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
-
-static const float features[] = {
+float features[] = {
     // copy raw features here (for example from the 'Live classification' page)
     // see https://docs.edgeimpulse.com/docs/running-your-impulse-arduino
     -0.3809, -0.4746, -0.5160, -0.5489, -0.8806, -0.3134, -0.4810, -0.0593, -0.5490, -0.7550, -0.2870,
@@ -138,7 +141,6 @@ float x[N_CHANS][3];
 float y[N_CHANS][2];
 float filteredData01[5];
 
-
 // call this on each new sample
 void filterData01(float newValue[])
 {
@@ -170,6 +172,27 @@ float initFilter01()
     y[j][0] = 0;
     y[j][1] = 0;
     }  
+}
+
+float x_sum[3];
+float y_sum[2];
+float filteredData02;
+
+void filterData02(float newValue){
+    float a0 = 0.010995248654511658;
+    float a1 = 0.021990497309023315;
+    float a2 = 0.010995248654511658;
+    float b1 = -1.6822395838277024;
+    float b2 = 0.7262205784457494;
+
+    x_sum[2] = x_sum[1];
+    x_sum[1] = x_sum[0];
+    x_sum[0] = newValue;
+    filteredData02 = a0*x_sum[0] + a1*x_sum[1]+a2*x_sum[2]-b1*y_sum[0]-b2*y_sum[1];
+    y_sum[1]=y_sum[0];
+    y_sum[0]=filteredData02;
+
+    return;
 }
 /* ------------------------------------------------------------------------- */
 
@@ -255,7 +278,7 @@ void setup() {
 void loop() {
   
   float temp_data = 0;
-  float sum[5]={0,0,0,0,0};
+  float mav[5]={0,0,0,0,0};
   
   for (int i = 0; i < FRAME_LEN; i++){
     for(int j = 0; j < N_CHANS; j++){
@@ -263,9 +286,9 @@ void loop() {
 //      if (temp_data>10000) temp_data = 10000;
       temp_data = temp_data - means[j];
       temp_data = abs(temp_data);
-      sum[j]+= temp_data;
+      mav[j]+= temp_data;
       if( i == ( FRAME_LEN -1)){
-        sum[j] *= alpha[j];
+        mav[j] *= alpha[j];
 //        Serial.print(sum[j]);
 //        Serial.print(",");
       }
@@ -276,10 +299,56 @@ void loop() {
 
   float filtfilt[5]={0,0,0,0,0};
 
-  filterData01(sum);
+  filterData01(mav);
+
+  float mav_sum = 0;
+    
   for(int j=0; j<N_CHANS; j++){
-    Serial.print(filteredData01[j]);
-    Serial.print(","); 
+    mav_sum += filteredData01[j]; 
+  }
+
+  filterData02(mav_sum);
+  Serial.print(filteredData02);
+  Serial.print(" , ");
+
+  float env_data[SIGNAL_LEN][N_CHANS]= {};
+  float mav_feat[5]={};
+  int feat_idx_count = 0;
+
+  if( filteredData02 > THRESHOLD){
+    for ( int i = 0; i < SIGNAL_LEN; i++){
+      for( int j = 0; j < N_CHANS; j++){
+        env_data[i][j] = analogRead( CH_01+j);
+      }
+      delay(4);
+    }
+    for( int i = 0; i < FEATURE_LEN; i++){
+      for (int k = i * STEP_LEN; k < FRAME_LEN; k++){
+        for (int j = 0; j < N_CHANS; j++){
+          temp_data = env_data[k][j];
+          temp_data = temp_data - means[j];
+          temp_data = abs( temp_data);
+          mav_feat[j] += temp_data;
+          if(k == FRAME_LEN -1){
+            mav_feat[j] += alpha[j] * mav_feat[j];
+          }
+        }
+      }
+      filterData01(mav_feat);
+      for(int j = 0; j<N_CHANS;j++){
+        features[feat_idx_count] = mav_feat[j];
+        feat_idx_count++;
+        mav_feat[j] = 0; 
+      }
+    }
+    for ( int i = 0; i < FEATURE_LEN; i++){
+      Serial.print(features[i]);
+      Serial.print(" ");
+    }
+    Serial.println();
+  }
+  else{
+    Serial.print(6);
   }
   Serial.println();
 
