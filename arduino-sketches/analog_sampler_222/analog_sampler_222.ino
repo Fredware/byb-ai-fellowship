@@ -128,6 +128,51 @@ bool debug_timer(void *){
 }
 /* ------------------------------------------------------------------------- */
 
+/* Filtering --------------------------------------------------------------- */
+//filter formula can be found here:
+// https://www.earlevel.com/main/2003/02/28/biquads/
+// y[n] = a0*x[n] + a1*x[n-1] + a2*x[n-2] – b1*y[n-1] – b2*y[n-2]
+//b0, b1, b2, a1, a2 can be calculated here:
+//https://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
+float x[N_CHANS][3];
+float y[N_CHANS][2];
+float filteredData01[5];
+
+
+// call this on each new sample
+void filterData01(float newValue[])
+{
+  float a0 = 0.010995248654511658;
+  float a1 = 0.021990497309023315;
+  float a2 = 0.010995248654511658;
+  float b1 = -1.6822395838277024;
+  float b2 = 0.7262205784457494;
+
+  for (int j=0; j < N_CHANS; j++){
+    x[j][2] = x[j][1];
+    x[j][1] = x[j][0];
+    x[j][0] = newValue[j];
+    filteredData01[j] = a0*x[j][0]+a1*x[j][1]+a2*x[j][2]-b1*y[j][0]-b2*y[j][1];
+    y[j][1] = y[j][0];
+    y[j][0] = filteredData01[j];
+  }
+  return;
+//  return filteredData01;
+}
+
+//call this in setup
+float initFilter01()
+{
+  for (int j=0; j< N_CHANS; j++){
+    x[j][0] = 0;
+    x[j][1] = 0;
+    x[j][2] = 0;
+    y[j][0] = 0;
+    y[j][1] = 0;
+    }  
+}
+/* ------------------------------------------------------------------------- */
+
 /* Inference Model --------------------------------------------------------- */
 int raw_feature_get_data(size_t offset, size_t length, float *out_ptr) {
     memcpy(out_ptr, features + offset, length * sizeof(float));
@@ -197,15 +242,7 @@ void setup() {
   for( int i = 0; i < N_CHANS; i++){
     alpha[i] = FRAME_LEN * stdevs[i] * norms[i];
     alpha[i] = 1.0 / alpha[i];
-//    Serial.print(alpha[i], 7);
-//    Serial.print(" ");
   }
-//  Serial.println();
-  /* ----------------------------------------------------------------------- */
-//  Serial.println("====================================");
-//  Serial.println("=== Hacker Hand Integration Demo ===");
-//  Serial.println("====================================");
-  /* ----------------------------------------------------------------------- */
   analog_read_time = millis();  //Initialize reference timestamp
   /* ----------------------------------------------------------------------- */
 }
@@ -229,13 +266,22 @@ void loop() {
       sum[j]+= temp_data;
       if( i == ( FRAME_LEN -1)){
         sum[j] *= alpha[j];
-        Serial.print(sum[j]);
-        Serial.print(",");
+//        Serial.print(sum[j]);
+//        Serial.print(",");
       }
     }
-    Serial.println();
+//    Serial.println();
     delay(4);
   }
+
+  float filtfilt[5]={0,0,0,0,0};
+
+  filterData01(sum);
+  for(int j=0; j<N_CHANS; j++){
+    Serial.print(filteredData01[j]);
+    Serial.print(","); 
+  }
+  Serial.println();
 
 //  for(int j = 0; j < N_CHANS; j++){
 //  }
