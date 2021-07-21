@@ -194,6 +194,31 @@ void filterData02(float newValue){
 
     return;
 }
+
+float x_trig[N_CHANS][3];
+float y_trig[N_CHANS][2];
+float filteredData03[5];
+
+// call this on each new sample
+void filterData03(float newValue[])
+{
+  float a0 = 0.010995248654511658;
+  float a1 = 0.021990497309023315;
+  float a2 = 0.010995248654511658;
+  float b1 = -1.6822395838277024;
+  float b2 = 0.7262205784457494;
+
+  for (int j=0; j < N_CHANS; j++){
+    x_trig[j][2] = x_trig[j][1];
+    x_trig[j][1] = x_trig[j][0];
+    x_trig[j][0] = newValue[j];
+    filteredData03[j] = a0*x_trig[j][0]+a1*x_trig[j][1]+a2*x_trig[j][2]-b1*y_trig[j][0]-b2*y_trig[j][1];
+    y_trig[j][1] = y_trig[j][0];
+    y_trig[j][0] = filteredData03[j];
+  }
+  return;
+//  return filteredData01;
+}
 /* ------------------------------------------------------------------------- */
 
 /* Inference Model --------------------------------------------------------- */
@@ -297,8 +322,6 @@ void loop() {
     delay(4);
   }
 
-  float filtfilt[5]={0,0,0,0,0};
-
   filterData01(mav);
 
   float mav_sum = 0;
@@ -314,7 +337,8 @@ void loop() {
   float env_data[SIGNAL_LEN][N_CHANS]= {};
   float mav_feat[5]={};
   int feat_idx_count = 0;
-
+  
+/***********************************************/
   if( filteredData02 > THRESHOLD){
     for ( int i = 0; i < SIGNAL_LEN; i++){
       for( int j = 0; j < N_CHANS; j++){
@@ -323,7 +347,7 @@ void loop() {
       delay(4);
     }
     for( int i = 0; i < FEATURE_LEN; i++){
-      for (int k = i * STEP_LEN; k < FRAME_LEN; k++){
+      for (int k = i * STEP_LEN; k < FRAME_LEN+i*STEP_LEN; k++){
         for (int j = 0; j < N_CHANS; j++){
           temp_data = env_data[k][j];
           temp_data = temp_data - means[j];
@@ -334,11 +358,11 @@ void loop() {
           }
         }
       }
-      filterData01(mav_feat);
+      filterData03(mav_feat);
       for(int j = 0; j<N_CHANS;j++){
-        features[feat_idx_count] = mav_feat[j];
+        features[feat_idx_count] = filteredData03[j];
         feat_idx_count++;
-        mav_feat[j] = 0; 
+        filteredData03[j] = 0; 
       }
     }
     for ( int i = 0; i < FEATURE_LEN; i++){
@@ -350,6 +374,7 @@ void loop() {
   else{
     Serial.print(6);
   }
+/***************************************************/  
   Serial.println();
 
 //  for(int j = 0; j < N_CHANS; j++){
