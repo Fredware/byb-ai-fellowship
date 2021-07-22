@@ -33,8 +33,8 @@
 #define FEATURE_LEN 11
 #define SIGNAL_LEN 80
 #define STEP_LEN 6
-#define THRESHOLD 7.05
-#define D_THRESHOLD 7.00
+#define THRESHOLD 7.15
+#define D_THRESHOLD 7.05
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -58,8 +58,8 @@ int finalReading3;
 int finalReading4;
 
 int servoPins[SERVOS] = {9,10,11,12,13}; // servos on pins 9 through 13 (thumb, index, middle, ring, pinky)
-int servoMin[SERVOS] = {900,544,544,544,544}; // minimum pwm value for each servo
-int servoMax[SERVOS] = {2000,2400,2400,2400,2400}; // maximum pwm value for each servo
+int servoMin[SERVOS] = {1000,544,544,544,544}; // minimum pwm value for each servo
+int servoMax[SERVOS] = {1750 ,2400,2400,2400,2400}; // maximum pwm value for each servo
 int servoInv[SERVOS] = {0,0,0,0,0}; // indicates if servo direction is inverted
 
 unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used to reduce power comsumption
@@ -234,7 +234,8 @@ int raw_feature_get_data(size_t offset, size_t length, float *out_ptr) {
 *
 * @param[in]  format     Variable argument list
 */
-void ei_printf(const char *format, ...) {
+void ei_printf(const char *format, ...) 
+{
    static char print_buf[1024] = { 0 };
 
    va_list args;
@@ -242,7 +243,8 @@ void ei_printf(const char *format, ...) {
    int r = vsnprintf(print_buf, sizeof(print_buf), format, args);
    va_end(args);
 
-   if (r > 0) {
+   if (r > 0) 
+   {
        Serial.write(print_buf);
    }
 }
@@ -293,6 +295,8 @@ void execute_finger_sequence( int finger_idx)
 /************************************ SETUP **********************************/
 /*****************************************************************************/
 /*****************************************************************************/
+#define SAMPLING_PIN 3
+#define DELAY_PIN 4
 void setup() 
 {
   /* ----------------------------------------------------------------------- */
@@ -310,6 +314,8 @@ void setup()
   }
   // analog_read_time = millis();  //Initialize reference timestamp
   /* ----------------------------------------------------------------------- */
+  pinMode(SAMPLING_PIN, OUTPUT);
+  pinMode(DELAY_PIN, OUTPUT);
 }
 
 /******************************************************************************/
@@ -325,11 +331,12 @@ int debounce_flag = 0;
 
 void loop() 
 {  
-  float temp_data = 0;
   float mav[5]={0,0,0,0,0};
-  
+  float temp_data = 0;
+
   for (int i = 0; i < FRAME_LEN; i++)
   {
+    digitalWrite(SAMPLING_PIN, HIGH);
     for(int j = 0; j < N_CHANS; j++)
     {
       temp_data = analogRead(CH_01+j);
@@ -341,31 +348,31 @@ void loop()
         mav[j] *= alpha[j];
       }
     }
-    delay(4);
+    if( i < FRAME_LEN-1){
+      delay(4);
+    }
   }
 
   filterData01(mav);
 
   float mav_sum = 0;
     
-  for(int j=0; j<N_CHANS; j++)
+  for( int j = 0; j < N_CHANS; j++)
   {
     mav_sum += filteredData01[j]; 
   }
 
-  filterData02(mav_sum);
-  Serial.print(filteredData02);
-  Serial.print(" , ");
+  filterData02( mav_sum);
+  Serial.print( filteredData02);
+  Serial.print( " , ");
 
   float env_data[SIGNAL_LEN][N_CHANS]= {};
   float mav_feat[5]={};
   int feat_idx_count = 0;
 
-  if(filteredData02 < D_THRESHOLD) debounce_flag = 0;
-
+  if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
   if( debounce_flag < 1)
   {
-    /***********************************************/
     if( filteredData02 > THRESHOLD)
     {
       for ( int i = 0; i < SIGNAL_LEN; i++)
@@ -376,9 +383,10 @@ void loop()
         }
         delay(4);
       }
+      
       for( int i = 0; i < FEATURE_LEN; i++)
       {
-        for (int k = i * STEP_LEN; k < FRAME_LEN+i*STEP_LEN; k++)
+        for ( int k = i * STEP_LEN; k < i * STEP_LEN + FRAME_LEN; k++)
         {
           for (int j = 0; j < N_CHANS; j++)
           {
@@ -392,7 +400,9 @@ void loop()
             }
           }
         }
+        
         filterData03(mav_feat);
+        
         for(int j = 0; j<N_CHANS;j++)
         {
           features[feat_idx_count] = filteredData03[j];
@@ -400,15 +410,18 @@ void loop()
           filteredData03[j] = 0; 
         }
       }
+      
       for ( int i = 0; i < FEATURE_LEN; i++)
       {
         Serial.print(features[i]);
         Serial.print(" ");
       }
+      
       Serial.println();
       classification_flag = 1;
       debounce_flag = 1;
     }
+    
     else
     {
       Serial.print(6);
