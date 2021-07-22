@@ -34,6 +34,7 @@
 #define SIGNAL_LEN 80
 #define STEP_LEN 6
 #define THRESHOLD 7.05
+#define D_THRESHOLD 7.00
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -299,6 +300,7 @@ size_t max_idx = 0;
 
 int classification_flag = 0;
 int hacking_flag = 0;
+int debounce_flag = 0;
 /*****************************************************************************/
 /*****************************************************************************/
 /********************************************************************** LOOP */
@@ -341,7 +343,10 @@ void loop() {
   float env_data[SIGNAL_LEN][N_CHANS]= {};
   float mav_feat[5]={};
   int feat_idx_count = 0;
-  
+
+  if(filteredData02 < D_THRESHOLD) debounce_flag = 0;
+
+if(debounce_flag < 1){
 /***********************************************/
   if( filteredData02 > THRESHOLD){
     for ( int i = 0; i < SIGNAL_LEN; i++){
@@ -375,12 +380,15 @@ void loop() {
     }
     Serial.println();
     classification_flag = 1;
+    debounce_flag = 1;
   }
   else{
     Serial.print(6);
   }
 /***************************************************/  
   Serial.println();
+}
+  
 if(classification_flag>0){ 
   /* ----------------------------------------------------------------------- */
 //  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
