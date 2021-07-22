@@ -295,6 +295,7 @@ void setup() {
   /* ----------------------------------------------------------------------- */
 }
 
+int classification_flag = 0;
 /*****************************************************************************/
 /*****************************************************************************/
 /********************************************************************** LOOP */
@@ -370,83 +371,44 @@ void loop() {
       Serial.print(" ");
     }
     Serial.println();
+    classification_flag = 1;
   }
   else{
     Serial.print(6);
   }
 /***************************************************/  
   Serial.println();
-
-//  for(int j = 0; j < N_CHANS; j++){
-//  }
-//  Serial.print(-0.5);
-//  Serial.print(" ");
-//  for (int chan=CH_01; chan <= CH_05; chan++){
-//    temp_data = analogRead(chan);
-//    switch(chan){
-//      case CH_01:
-//        buffer_ch01.push(temp_data);
-//        Serial.print(buffer_ch01.last());
-//        Serial.print(", ");
-//        break;
-//      case CH_02:
-//        buffer_ch02.push(temp_data);
-//        Serial.print(buffer_ch02.last());
-//        Serial.print(", ");
-//        break;
-//      case CH_03:
-//        buffer_ch03.push(temp_data);
-//        Serial.print(buffer_ch03.last());
-//        Serial.print(", ");
-//        break;
-//      case CH_04:
-//        buffer_ch04.push(temp_data);
-//        Serial.print(buffer_ch04.last());
-//        Serial.print(", ");
-//        break;
-//      case CH_05:
-//        buffer_ch05.push(temp_data);
-//        Serial.print(buffer_ch05.last());
-//        Serial.println();
-//        break;
-//      default:
-//        Serial.println("\t\tERROR DURING ANALOG SAMPLING");
-//        break;
-//    }
-//  }
-//  }
-//  Serial.println("\tANALOG SAMPLING: DONE");
+if(classification_flag>0){ 
+  /* ----------------------------------------------------------------------- */
+  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
+    ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
+              EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
+    delay(1000);
+    return;
+  }
  
-//  /* ----------------------------------------------------------------------- */
-//  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
-//    ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
-//              EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
-//    delay(1000);
-//    return;
-//  }
-// 
-//  ei_impulse_result_t result = { 0 };
-//  
-//  // the features are stored into flash, and we don't want to load everything into RAM
-//  signal_t features_signal;
-//  features_signal.total_length = sizeof(features) / sizeof(features[0]);
-//  features_signal.get_data = &raw_feature_get_data;
-//
-//  Serial.println("\tCLASSIFICATION: START");
-//  // invoke the impulse
-//  EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
-//
-//  if (res != 0) return;
-//
-//  // human-readable predictions
-//  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-//    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
-//  }
-//  #if EI_CLASSIFIER_HAS_ANOMALY == 1
-//  ei_printf("    anomaly score: %.3f\n", result.anomaly);
-//  #endif
-//  Serial.println("\tCLASSIFICATION: END");  
-//  
+  ei_impulse_result_t result = { 0 };
+  
+  // the features are stored into flash, and we don't want to load everything into RAM
+  signal_t features_signal;
+  features_signal.total_length = sizeof(features) / sizeof(features[0]);
+  features_signal.get_data = &raw_feature_get_data;
+
+  Serial.println("\tCLASSIFICATION: START");
+  // invoke the impulse
+  EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
+
+  if (res != 0) return;
+
+  // human-readable predictions
+  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
+    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
+  }
+  #if EI_CLASSIFIER_HAS_ANOMALY == 1
+  ei_printf("    anomaly score: %.3f\n", result.anomaly);
+  #endif
+  Serial.println("\tCLASSIFICATION: END");  
+  
 //  /* ------------------------------------------------------------------------- */
 //  /*Get the prediction with the highest probability*/
 //  Serial.println("\tCLASS SELECTION: START");
@@ -469,7 +431,8 @@ void loop() {
 //  Serial.print("\t\tINDEX: ");
 //  Serial.println(max_idx);
 //  Serial.println("\tCLASS SELECTION: END");
-//  
+classification_flag = 0;
+}
 //  /* ------------------------------------------------------------------------- */
 //  // Detach servo if time since last attach exceeds 500 ms.
 //  for (int i=0; i < SERVOS; i++) {
