@@ -58,8 +58,8 @@ int finalReading3;
 int finalReading4;
 
 int servoPins[SERVOS] = {9,10,11,12,13}; // servos on pins 9 through 13 (thumb, index, middle, ring, pinky)
-int servoMin[SERVOS] = {544,544,544,544,544}; // minimum pwm value for each servo
-int servoMax[SERVOS] = {2400,2400,2400,2400,2400}; // maximum pwm value for each servo
+int servoMin[SERVOS] = {900,544,544,544,544}; // minimum pwm value for each servo
+int servoMax[SERVOS] = {2000,2400,2400,2400,2400}; // maximum pwm value for each servo
 int servoInv[SERVOS] = {0,0,0,0,0}; // indicates if servo direction is inverted
 
 unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used to reduce power comsumption
@@ -69,13 +69,13 @@ Servo myservo[SERVOS];
 /* ------------------------------------------------------------------------- */
 
 /* Circular Buffer ---------------------------------------------------- */
-unsigned long analog_read_time;
-
-CircularBuffer<float, BUFFER_SIZE> buffer_ch01;
-CircularBuffer<float, BUFFER_SIZE> buffer_ch02;
-CircularBuffer<float, BUFFER_SIZE> buffer_ch03;
-CircularBuffer<float, BUFFER_SIZE> buffer_ch04;
-CircularBuffer<float, BUFFER_SIZE> buffer_ch05;
+//unsigned long analog_read_time;
+//
+//CircularBuffer<float, BUFFER_SIZE> buffer_ch01;
+//CircularBuffer<float, BUFFER_SIZE> buffer_ch02;
+//CircularBuffer<float, BUFFER_SIZE> buffer_ch03;
+//CircularBuffer<float, BUFFER_SIZE> buffer_ch04;
+//CircularBuffer<float, BUFFER_SIZE> buffer_ch05;
 /* ------------------------------------------------------------------------- */
 
 /* Dataset Statistics ------------------------------------------------------ */
@@ -99,13 +99,13 @@ float alpha[5];
 /* ------------------------------------------------------------------------- */
 
 /* 200Hz Analog Sampler ---------------------------------------------------- */
-auto sampling_timer = timer_create_default();
-int debug_counter = 0;
+//auto sampling_timer = timer_create_default();
+//int debug_counter = 0;
 uint32_t temp_data;
 /* ------------------------------------------------------------------------- */
 
 /* Inference Model --------------------------------------------------------- */
-static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
+// static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 float features[] = {
     // copy raw features here (for example from the 'Live classification' page)
     // see https://docs.edgeimpulse.com/docs/running-your-impulse-arduino
@@ -118,18 +118,18 @@ float features[] = {
 /* ------------------------------------------------------------------------- */
 
 /* 200Hz Analog Sampler ---------------------------------------------------- */
-bool debug_timer(void *){
-  Serial.println("ANALOG SAMPLING: START");
-  Serial.print("\tData: ");
-  for (int chan=CH_01; chan <= CH_05; chan++){
-    temp_data = analogRead(chan);
-    Serial.print(temp_data);
-    if( chan != CH_05) Serial.print(", ");
-  }
-  Serial.println();
-  Serial.println("ANALOG SAMPLING: DONE");  
-  return true;
-}
+// bool debug_timer(void *){
+//   Serial.println("ANALOG SAMPLING: START");
+//   Serial.print("\tData: ");
+//   for (int chan=CH_01; chan <= CH_05; chan++){
+//     temp_data = analogRead(chan);
+//     Serial.print(temp_data);
+//     if( chan != CH_05) Serial.print(", ");
+//   }
+//   Serial.println();
+//   Serial.println("ANALOG SAMPLING: DONE");  
+//   return true;
+// }
 /* ------------------------------------------------------------------------- */
 
 /* Filtering --------------------------------------------------------------- */
@@ -138,6 +138,12 @@ bool debug_timer(void *){
 // y[n] = a0*x[n] + a1*x[n-1] + a2*x[n-2] – b1*y[n-1] – b2*y[n-2]
 //b0, b1, b2, a1, a2 can be calculated here:
 //https://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
+float a0 = 0.010995248654511658;
+float a1 = 0.021990497309023315;
+float a2 = 0.010995248654511658;
+float b1 = -1.6822395838277024;
+float b2 = 0.7262205784457494;
+
 float x[N_CHANS][3];
 float y[N_CHANS][2];
 float filteredData01[5];
@@ -145,54 +151,51 @@ float filteredData01[5];
 // call this on each new sample
 void filterData01(float newValue[])
 {
-  float a0 = 0.010995248654511658;
-  float a1 = 0.021990497309023315;
-  float a2 = 0.010995248654511658;
-  float b1 = -1.6822395838277024;
-  float b2 = 0.7262205784457494;
-
-  for (int j=0; j < N_CHANS; j++){
+  for (int j = 0; j < N_CHANS; j++)
+  {
     x[j][2] = x[j][1];
     x[j][1] = x[j][0];
     x[j][0] = newValue[j];
-    filteredData01[j] = a0*x[j][0]+a1*x[j][1]+a2*x[j][2]-b1*y[j][0]-b2*y[j][1];
+    filteredData01[j] = a0*x[j][0]
+                      + a1*x[j][1]
+                      + a2*x[j][2]
+                      - b1*y[j][0]
+                      - b2*y[j][1];
     y[j][1] = y[j][0];
     y[j][0] = filteredData01[j];
   }
   return;
-//  return filteredData01;
 }
 
 //call this in setup
 float initFilter01()
 {
-  for (int j=0; j< N_CHANS; j++){
+  for (int j=0; j< N_CHANS; j++)
+  {
     x[j][0] = 0;
     x[j][1] = 0;
     x[j][2] = 0;
     y[j][0] = 0;
     y[j][1] = 0;
-    }  
+  }  
 }
 
 float x_sum[3];
 float y_sum[2];
 float filteredData02;
 
-void filterData02(float newValue){
-    float a0 = 0.010995248654511658;
-    float a1 = 0.021990497309023315;
-    float a2 = 0.010995248654511658;
-    float b1 = -1.6822395838277024;
-    float b2 = 0.7262205784457494;
-
+void filterData02(float newValue)
+{
     x_sum[2] = x_sum[1];
     x_sum[1] = x_sum[0];
     x_sum[0] = newValue;
-    filteredData02 = a0*x_sum[0] + a1*x_sum[1]+a2*x_sum[2]-b1*y_sum[0]-b2*y_sum[1];
-    y_sum[1]=y_sum[0];
-    y_sum[0]=filteredData02;
-
+    filteredData02 = a0*x_sum[0]
+                    + a1*x_sum[1]
+                    + a2*x_sum[2]
+                    - b1*y_sum[0]
+                    - b2*y_sum[1];
+    y_sum[1] = y_sum[0];
+    y_sum[0] = filteredData02;
     return;
 }
 
@@ -203,22 +206,20 @@ float filteredData03[5];
 // call this on each new sample
 void filterData03(float newValue[])
 {
-  float a0 = 0.010995248654511658;
-  float a1 = 0.021990497309023315;
-  float a2 = 0.010995248654511658;
-  float b1 = -1.6822395838277024;
-  float b2 = 0.7262205784457494;
-
-  for (int j=0; j < N_CHANS; j++){
+  for ( int j = 0; j < N_CHANS; j++)
+  {
     x_trig[j][2] = x_trig[j][1];
     x_trig[j][1] = x_trig[j][0];
     x_trig[j][0] = newValue[j];
-    filteredData03[j] = a0*x_trig[j][0]+a1*x_trig[j][1]+a2*x_trig[j][2]-b1*y_trig[j][0]-b2*y_trig[j][1];
+    filteredData03[j] = a0*x_trig[j][0]
+                      + a1*x_trig[j][1]
+                      + a2*x_trig[j][2]
+                      - b1*y_trig[j][0]
+                      - b2*y_trig[j][1];
     y_trig[j][1] = y_trig[j][0];
     y_trig[j][0] = filteredData03[j];
   }
   return;
-//  return filteredData01;
 }
 /* ------------------------------------------------------------------------- */
 
@@ -264,7 +265,8 @@ void moveFinger(int finger, int pos)
   else { // Open
     if (myservo[finger].read() != abs(SRV_OPEN - SRV_OPEN*servoInv[finger])) {
       // Open finger
-      if (!myservo[finger].attached()) {
+      if (!myservo[finger].attached()) 
+      {
         myservo[finger].attach(servoPins[finger], servoMin[finger], servoMax[finger]);
         tmsServo_Attached[finger] = millis();
       }
@@ -272,59 +274,73 @@ void moveFinger(int finger, int pos)
     }
   }
 }
+
+void execute_finger_sequence( int finger_idx)
+{
+  int period_ms = 1000;
+  moveFinger (finger_idx, CLOSE);
+  Serial.println("\t\tHAND STATUS: CLOSED");
+  delay(period_ms);
+  moveFinger (finger_idx, OPEN);
+  Serial.println("\t\tHAND STATUS: OPEN");
+  delay(period_ms);
+  return;
+}
 /* ------------------------------------------------------------------------- */
 
 /*****************************************************************************/
 /*****************************************************************************/
-/********************************************************************* SETUP */
+/************************************ SETUP **********************************/
 /*****************************************************************************/
 /*****************************************************************************/
-void setup() {
+void setup() 
+{
   /* ----------------------------------------------------------------------- */
   Serial.begin( BAUD_RATE);
   /* ----------------------------------------------------------------------- */
-  for (int f = 0; f < SERVOS; f++) moveFinger (f, OPEN);  // Open Hand
+  for (int finger = 0; finger < SERVOS; finger++) moveFinger (finger, OPEN);  // Open Hand
   delay (1000);                                            // Wait for servos
-  for (int f = 0; f < SERVOS; f++) myservo[f].detach();   // Relax servos
-  delay (2000);
+  for (int finger = 0; finger < SERVOS; finger++) myservo[finger].detach();   // Relax servos
+  delay (1000);
   /* ----------------------------------------------------------------------- */
-  for( int i = 0; i < N_CHANS; i++){
+  for( int i = 0; i < N_CHANS; i++)
+  {
     alpha[i] = FRAME_LEN * stdevs[i] * norms[i];
     alpha[i] = 1.0 / alpha[i];
   }
-  analog_read_time = millis();  //Initialize reference timestamp
+  // analog_read_time = millis();  //Initialize reference timestamp
   /* ----------------------------------------------------------------------- */
 }
 
+/******************************************************************************/
+/******************************************************************************/
+/************************************ LOOP ************************************/
+/******************************************************************************/
+/******************************************************************************/
 size_t max_idx = 0;
 
 int classification_flag = 0;
 int hacking_flag = 0;
 int debounce_flag = 0;
-/*****************************************************************************/
-/*****************************************************************************/
-/********************************************************************** LOOP */
-/*****************************************************************************/
-/*****************************************************************************/
-void loop() {
-  
+
+void loop() 
+{  
   float temp_data = 0;
   float mav[5]={0,0,0,0,0};
   
-  for (int i = 0; i < FRAME_LEN; i++){
-    for(int j = 0; j < N_CHANS; j++){
+  for (int i = 0; i < FRAME_LEN; i++)
+  {
+    for(int j = 0; j < N_CHANS; j++)
+    {
       temp_data = analogRead(CH_01+j);
-//      if (temp_data>10000) temp_data = 10000;
       temp_data = temp_data - means[j];
       temp_data = abs(temp_data);
       mav[j]+= temp_data;
-      if( i == ( FRAME_LEN -1)){
+      if( i == ( FRAME_LEN -1))
+      {
         mav[j] *= alpha[j];
-//        Serial.print(sum[j]);
-//        Serial.print(",");
       }
     }
-//    Serial.println();
     delay(4);
   }
 
@@ -332,7 +348,8 @@ void loop() {
 
   float mav_sum = 0;
     
-  for(int j=0; j<N_CHANS; j++){
+  for(int j=0; j<N_CHANS; j++)
+  {
     mav_sum += filteredData01[j]; 
   }
 
@@ -346,162 +363,141 @@ void loop() {
 
   if(filteredData02 < D_THRESHOLD) debounce_flag = 0;
 
-if(debounce_flag < 1){
-/***********************************************/
-  if( filteredData02 > THRESHOLD){
-    for ( int i = 0; i < SIGNAL_LEN; i++){
-      for( int j = 0; j < N_CHANS; j++){
-        env_data[i][j] = analogRead( CH_01+j);
+  if( debounce_flag < 1)
+  {
+    /***********************************************/
+    if( filteredData02 > THRESHOLD)
+    {
+      for ( int i = 0; i < SIGNAL_LEN; i++)
+      {
+        for( int j = 0; j < N_CHANS; j++)
+        {
+          env_data[i][j] = analogRead( CH_01+j);
+        }
+        delay(4);
       }
-      delay(4);
-    }
-    for( int i = 0; i < FEATURE_LEN; i++){
-      for (int k = i * STEP_LEN; k < FRAME_LEN+i*STEP_LEN; k++){
-        for (int j = 0; j < N_CHANS; j++){
-          temp_data = env_data[k][j];
-          temp_data = temp_data - means[j];
-          temp_data = abs( temp_data);
-          mav_feat[j] += temp_data;
-          if(k == FRAME_LEN -1){
-            mav_feat[j] += alpha[j] * mav_feat[j];
+      for( int i = 0; i < FEATURE_LEN; i++)
+      {
+        for (int k = i * STEP_LEN; k < FRAME_LEN+i*STEP_LEN; k++)
+        {
+          for (int j = 0; j < N_CHANS; j++)
+          {
+            temp_data = env_data[k][j];
+            temp_data = temp_data - means[j];
+            temp_data = abs( temp_data);
+            mav_feat[j] += temp_data;
+            if(k == FRAME_LEN -1)
+            {
+              mav_feat[j] += alpha[j] * mav_feat[j];
+            }
           }
         }
+        filterData03(mav_feat);
+        for(int j = 0; j<N_CHANS;j++)
+        {
+          features[feat_idx_count] = filteredData03[j];
+          feat_idx_count++;
+          filteredData03[j] = 0; 
+        }
       }
-      filterData03(mav_feat);
-      for(int j = 0; j<N_CHANS;j++){
-        features[feat_idx_count] = filteredData03[j];
-        feat_idx_count++;
-        filteredData03[j] = 0; 
+      for ( int i = 0; i < FEATURE_LEN; i++)
+      {
+        Serial.print(features[i]);
+        Serial.print(" ");
       }
+      Serial.println();
+      classification_flag = 1;
+      debounce_flag = 1;
     }
-    for ( int i = 0; i < FEATURE_LEN; i++){
-      Serial.print(features[i]);
-      Serial.print(" ");
+    else
+    {
+      Serial.print(6);
     }
+  /***************************************************/  
     Serial.println();
-    classification_flag = 1;
-    debounce_flag = 1;
   }
-  else{
-    Serial.print(6);
-  }
-/***************************************************/  
-  Serial.println();
-}
   
-if(classification_flag>0){ 
-  /* ----------------------------------------------------------------------- */
-//  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
-//    ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
-//              EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
-//    delay(1000);
-//    return;
-//  }
- 
-  ei_impulse_result_t result = { 0 };
-  
-  // the features are stored into flash, and we don't want to load everything into RAM
-  signal_t features_signal;
-  features_signal.total_length = sizeof(features) / sizeof(features[0]);
-  features_signal.get_data = &raw_feature_get_data;
+  if( classification_flag > 0)
+  { 
+    ei_impulse_result_t result = { 0 };
+    
+    // the features are stored into flash, and we don't want to load everything into RAM
+    signal_t features_signal;
+    features_signal.total_length = sizeof(features) / sizeof(features[0]);
+    features_signal.get_data = &raw_feature_get_data;
 
-  Serial.println("\tCLASSIFICATION: START");
-  // invoke the impulse
-  EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
+    Serial.println("\tCLASSIFICATION: START");
+    
+    // invoke the impulse
+    EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
 
-  if (res != 0) return;
+    if (res != 0) return;
 
-  // human-readable predictions
-//  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-//    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
-//  }
-//  #if EI_CLASSIFIER_HAS_ANOMALY == 1
-//  ei_printf("    anomaly score: %.3f\n", result.anomaly);
-//  #endif
-  Serial.println("\tCLASSIFICATION: END");  
-  
-//  /* ------------------------------------------------------------------------- */
-  /*Get the prediction with the highest probability*/
-  Serial.println("\tCLASS SELECTION: START");
-  float max_val = 0;
-  for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
-    if (i==0){
-      max_val = result.classification[i].value;
-      max_idx = 0;
+    Serial.println("\tCLASSIFICATION: END");  
+    
+    /* ------------------------------------------------------------------------- */
+    /*Get the prediction with the highest probability*/
+    Serial.println("\tCLASS SELECTION: START");
+    float max_val = 0;
+    for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++)
+    {
+      if (i==0)
+      {
+        max_val = result.classification[i].value;
+        max_idx = 0;
+      }
+      if(result.classification[i].value > max_val)
+      {
+        max_val = result.classification[i].value;
+        max_idx = i;
+      }
     }
-    if(result.classification[i].value > max_val){
-      max_val = result.classification[i].value;
-      max_idx = i;
-    }
+    Serial.print("\t\tPREDICTED CLASS: ");
+    Serial.println(result.classification[max_idx].label);
+    Serial.print("\t\tCONFIDENCE: ");
+    Serial.println(max_val);
+    Serial.print("\t\tINDEX: ");
+    Serial.println(max_idx);
+    Serial.println("\tCLASS SELECTION: END");
+    classification_flag = 0;
+    hacking_flag = 1;
   }
-  Serial.print("\t\tPREDICTED CLASS: ");
-  Serial.println(result.classification[max_idx].label);
-  Serial.print("\t\tCONFIDENCE: ");
-  Serial.println(max_val);
-  Serial.print("\t\tINDEX: ");
-  Serial.println(max_idx);
-  Serial.println("\tCLASS SELECTION: END");
-classification_flag = 0;
-hacking_flag = 1;
-}
-if (hacking_flag>0){
-  /* ------------------------------------------------------------------------- */
-  // Detach servo if time since last attach exceeds 500 ms.
-  for (int i=0; i < SERVOS; i++) {
-    if (millis() - tmsServo_Attached[i] > 500) {
-      myservo[i].detach();
+  if ( hacking_flag > 0)
+  {
+    /* ------------------------------------------------------------------------- */
+    // Detach servo if time since last attach exceeds 500 ms.
+    for ( int i = 0; i < SERVOS; i++)
+    {
+      if ( millis() - tmsServo_Attached[i] > 500) 
+      {
+        myservo[i].detach();
+      }
     }
-  }
 
-  Serial.println("\tMOTOR CONTROL: START");
-  switch(max_idx){
-    case THUMB_IDX:
-      moveFinger (0, CLOSE);
-      Serial.println("\t\tHAND STATUS: CLOSED");
-      delay(1000);
-      moveFinger (0, OPEN);
-      Serial.println("\t\tHAND STATUS: OPEN");
-      delay(1000);
-      break;
-    case INDEX_IDX:
-      moveFinger (1, CLOSE);
-      Serial.println("\t\tHAND STATUS: CLOSED");
-      delay(1000);
-      moveFinger (1, OPEN);
-      Serial.println("\t\tHAND STATUS: OPEN");
-      delay(1000);      
-      break;
-    case MIDDLE_IDX:
-      moveFinger (2, CLOSE);
-      Serial.println("\t\tHAND STATUS: CLOSED");
-      delay(1000);
-      moveFinger (2, OPEN);
-      Serial.println("\t\tHAND STATUS: OPEN");
-      delay(1000);    
-      break;
-    case RING_IDX:
-      moveFinger (3, CLOSE);
-      Serial.println("\t\tHAND STATUS: CLOSED");
-      delay(1000);
-      moveFinger (3, OPEN);
-      Serial.println("\t\tHAND STATUS: OPEN");
-      delay(1000);
-      break;
-    case PINKY_IDX:
-      moveFinger (4, CLOSE);
-      Serial.println("\t\tHAND STATUS: CLOSED");
-      delay(1000);
-      moveFinger (4, OPEN);
-      Serial.println("\t\tHAND STATUS: OPEN");
-      delay(1000);
-      break;
-    default:
-      Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
-      break;
+    Serial.println("\tMOTOR CONTROL: START");
+    switch(max_idx)
+    {
+      case THUMB_IDX:
+        execute_finger_sequence(0);
+        break;
+      case INDEX_IDX:
+        execute_finger_sequence(1); 
+        break;
+      case MIDDLE_IDX:
+        execute_finger_sequence(2);
+        break;
+      case RING_IDX:
+        execute_finger_sequence(3);
+        break;
+      case PINKY_IDX:
+        execute_finger_sequence(4);
+        break;
+      default:
+        Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
+        break;
+    }
+    Serial.println("\tMOTOR CONTROL: END");
+    Serial.println("<--- THE LOOP ENDS HERE --->");
+    hacking_flag = 0;
   }
-  Serial.println("\tMOTOR CONTROL: END");
-  
-  Serial.println("<--- THE LOOP ENDS HERE --->");
-hacking_flag=0;
-}
 }
