@@ -295,7 +295,10 @@ void setup() {
   /* ----------------------------------------------------------------------- */
 }
 
+size_t max_idx = 0;
+
 int classification_flag = 0;
+int hacking_flag = 0;
 /*****************************************************************************/
 /*****************************************************************************/
 /********************************************************************** LOOP */
@@ -380,12 +383,12 @@ void loop() {
   Serial.println();
 if(classification_flag>0){ 
   /* ----------------------------------------------------------------------- */
-  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
-    ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
-              EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
-    delay(1000);
-    return;
-  }
+//  if (sizeof(features) / sizeof(float) != EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE) {
+//    ei_printf("The size of your 'features' array is not correct. Expected %lu items, but had %lu\n",
+//              EI_CLASSIFIER_DSP_INPUT_FRAME_SIZE, sizeof(features) / sizeof(float));
+//    delay(1000);
+//    return;
+//  }
  
   ei_impulse_result_t result = { 0 };
   
@@ -401,93 +404,96 @@ if(classification_flag>0){
   if (res != 0) return;
 
   // human-readable predictions
-  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
-    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
-  }
-  #if EI_CLASSIFIER_HAS_ANOMALY == 1
-  ei_printf("    anomaly score: %.3f\n", result.anomaly);
-  #endif
+//  for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
+//    ei_printf("\t\t    %s: %.5f\n", result.classification[ix].label, result.classification[ix].value);
+//  }
+//  #if EI_CLASSIFIER_HAS_ANOMALY == 1
+//  ei_printf("    anomaly score: %.3f\n", result.anomaly);
+//  #endif
   Serial.println("\tCLASSIFICATION: END");  
   
 //  /* ------------------------------------------------------------------------- */
-//  /*Get the prediction with the highest probability*/
-//  Serial.println("\tCLASS SELECTION: START");
-//  float max_val = 0;
-//  size_t max_idx = 0;
-//  for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
-//    if (i==0){
-//      max_val = result.classification[i].value;
-//      max_idx = 0;
-//    }
-//    if(result.classification[i].value > max_val){
-//      max_val = result.classification[i].value;
-//      max_idx = i;
-//    }
-//  }
-//  Serial.print("\t\tPREDICTED CLASS: ");
-//  Serial.println(result.classification[max_idx].label);
-//  Serial.print("\t\tCONFIDENCE: ");
-//  Serial.println(max_val);
-//  Serial.print("\t\tINDEX: ");
-//  Serial.println(max_idx);
-//  Serial.println("\tCLASS SELECTION: END");
+  /*Get the prediction with the highest probability*/
+  Serial.println("\tCLASS SELECTION: START");
+  float max_val = 0;
+  for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++){
+    if (i==0){
+      max_val = result.classification[i].value;
+      max_idx = 0;
+    }
+    if(result.classification[i].value > max_val){
+      max_val = result.classification[i].value;
+      max_idx = i;
+    }
+  }
+  Serial.print("\t\tPREDICTED CLASS: ");
+  Serial.println(result.classification[max_idx].label);
+  Serial.print("\t\tCONFIDENCE: ");
+  Serial.println(max_val);
+  Serial.print("\t\tINDEX: ");
+  Serial.println(max_idx);
+  Serial.println("\tCLASS SELECTION: END");
 classification_flag = 0;
+hacking_flag = 1;
 }
-//  /* ------------------------------------------------------------------------- */
-//  // Detach servo if time since last attach exceeds 500 ms.
-//  for (int i=0; i < SERVOS; i++) {
-//    if (millis() - tmsServo_Attached[i] > 500) {
-//      myservo[i].detach();
-//    }
-//  }
-//
-//  Serial.println("\tMOTOR CONTROL: START");
-//  switch(max_idx){
-//    case THUMB_IDX:
-//      moveFinger (0, CLOSE);
-//      Serial.println("\t\tHAND STATUS: CLOSED");
-//      delay(1000);
-//      moveFinger (0, OPEN);
-//      Serial.println("\t\tHAND STATUS: OPEN");
-//      delay(1000);
-//      break;
-//    case INDEX_IDX:
-//      moveFinger (1, CLOSE);
-//      Serial.println("\t\tHAND STATUS: CLOSED");
-//      delay(1000);
-//      moveFinger (1, OPEN);
-//      Serial.println("\t\tHAND STATUS: OPEN");
-//      delay(1000);      
-//      break;
-//    case MIDDLE_IDX:
-//      moveFinger (2, CLOSE);
-//      Serial.println("\t\tHAND STATUS: CLOSED");
-//      delay(1000);
-//      moveFinger (2, OPEN);
-//      Serial.println("\t\tHAND STATUS: OPEN");
-//      delay(1000);    
-//      break;
-//    case RING_IDX:
-//      moveFinger (3, CLOSE);
-//      Serial.println("\t\tHAND STATUS: CLOSED");
-//      delay(1000);
-//      moveFinger (3, OPEN);
-//      Serial.println("\t\tHAND STATUS: OPEN");
-//      delay(1000);
-//      break;
-//    case PINKY_IDX:
-//      moveFinger (4, CLOSE);
-//      Serial.println("\t\tHAND STATUS: CLOSED");
-//      delay(1000);
-//      moveFinger (4, OPEN);
-//      Serial.println("\t\tHAND STATUS: OPEN");
-//      delay(1000);
-//      break;
-//    default:
-//      Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
-//      break;
-//  }
-//  Serial.println("\tMOTOR CONTROL: END");
-//  
-//  Serial.println("<--- THE LOOP ENDS HERE --->");
+if (hacking_flag>0){
+  /* ------------------------------------------------------------------------- */
+  // Detach servo if time since last attach exceeds 500 ms.
+  for (int i=0; i < SERVOS; i++) {
+    if (millis() - tmsServo_Attached[i] > 500) {
+      myservo[i].detach();
+    }
+  }
+
+  Serial.println("\tMOTOR CONTROL: START");
+  switch(max_idx){
+    case THUMB_IDX:
+      moveFinger (0, CLOSE);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
+      moveFinger (0, OPEN);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
+      break;
+    case INDEX_IDX:
+      moveFinger (1, CLOSE);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
+      moveFinger (1, OPEN);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);      
+      break;
+    case MIDDLE_IDX:
+      moveFinger (2, CLOSE);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
+      moveFinger (2, OPEN);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);    
+      break;
+    case RING_IDX:
+      moveFinger (3, CLOSE);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
+      moveFinger (3, OPEN);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
+      break;
+    case PINKY_IDX:
+      moveFinger (4, CLOSE);
+      Serial.println("\t\tHAND STATUS: CLOSED");
+      delay(1000);
+      moveFinger (4, OPEN);
+      Serial.println("\t\tHAND STATUS: OPEN");
+      delay(1000);
+      break;
+    default:
+      Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
+      break;
+  }
+  Serial.println("\tMOTOR CONTROL: END");
+  
+  Serial.println("<--- THE LOOP ENDS HERE --->");
+hacking_flag=0;
+}
 }
