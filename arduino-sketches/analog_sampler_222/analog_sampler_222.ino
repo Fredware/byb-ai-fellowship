@@ -360,12 +360,59 @@ void loop()
   }
 
   filterData02( mav_sum);
-  Serial.print( filteredData02);
-  Serial.print( " , ");
+//  Serial.print( filteredData02);
+//  Serial.print( " , ");
 
   float env_data[SIGNAL_LEN][N_CHANS]= {};
   float mav_feat[5]={0,0,0,0,0};
   int feat_idx_count = 0;
+  
+//  Serial.print("Min:5,");
+//  Serial.print("mav[0]:");
+//  Serial.print(mav[0]);
+//  Serial.print(" ");
+//  Serial.print("mav[1]:");
+//  Serial.print(mav[1]);
+//  Serial.print(" ");
+//  Serial.print("mav[2]:");
+//  Serial.print(mav[2]);
+//  Serial.print(" ");
+//  Serial.print("mav[3]:");
+//  Serial.print(mav[3]);
+//  Serial.print(" ");
+  Serial.print("mav[4]:");
+  Serial.print(mav[4]);
+  Serial.print(" ");
+  
+//  Serial.print("filt01[0]:");
+//  Serial.print(filteredData01[0]);
+//  Serial.print(" ");
+//  Serial.print("filt01[1]:");
+//  Serial.print(filteredData01[1]);
+//  Serial.print(" ");
+//  Serial.print("filt01[2]:");
+//  Serial.print(filteredData01[2]);
+//  Serial.print(" ");
+//  Serial.print("filt01[3]:");
+//  Serial.print(filteredData01[3]);
+//  Serial.print(" ");
+  Serial.print("filt01[4]:");
+  Serial.print(filteredData01[4]);
+  Serial.print(" ");
+
+  Serial.print("mav_sum:");
+  Serial.print(mav_sum);
+  Serial.print(" ");
+
+  Serial.print("filt02:");
+  Serial.print(filteredData02);
+  Serial.print(" ");
+
+  Serial.print("Threshold:");
+  Serial.println(THRESHOLD);
+//  Serial.print(" ");
+  
+//  Serial.println("Max:8");
 
   if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
   if( debounce_flag < 1)
@@ -409,23 +456,23 @@ void loop()
         }
       }
       
-      for ( int i = 0; i < N_CHANS * FEATURE_LEN; i++)
-      {
-        Serial.print(features[i]);
-        Serial.print(" ");
-      }
+      // for ( int i = 0; i < N_CHANS * FEATURE_LEN; i++)
+      // {
+      //   Serial.print(features[i]);
+      //   Serial.print(" ");
+      // }
       
-      Serial.println();
+      // Serial.println();
       classification_flag = 1;
       debounce_flag = 1;
     }
     
     else
     {
-      Serial.print(6);
+      // Serial.print(6);
     }
   /***************************************************/  
-    Serial.println();
+    // Serial.println();
   }
   
   if( classification_flag > 0)
@@ -437,18 +484,18 @@ void loop()
     features_signal.total_length = sizeof(features) / sizeof(features[0]);
     features_signal.get_data = &raw_feature_get_data;
 
-    Serial.println("\tCLASSIFICATION: START");
+    // Serial.println("\tCLASSIFICATION: START");
     
     // invoke the impulse
     EI_IMPULSE_ERROR res = run_classifier(&features_signal, &result, false /* debug */);
 
     if (res != 0) return;
 
-    Serial.println("\tCLASSIFICATION: END");  
+    // Serial.println("\tCLASSIFICATION: END");  
     
     /* ------------------------------------------------------------------------- */
     /*Get the prediction with the highest probability*/
-    Serial.println("\tCLASS SELECTION: START");
+    // Serial.println("\tCLASS SELECTION: START");
     float max_val = 0;
     for( size_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++)
     {
@@ -463,13 +510,13 @@ void loop()
         max_idx = i;
       }
     }
-    Serial.print("\t\tPREDICTED CLASS: ");
-    Serial.println(result.classification[max_idx].label);
-    Serial.print("\t\tCONFIDENCE: ");
-    Serial.println(max_val);
-    Serial.print("\t\tINDEX: ");
-    Serial.println(max_idx);
-    Serial.println("\tCLASS SELECTION: END");
+    // Serial.print("\t\tPREDICTED CLASS: ");
+    // Serial.println(result.classification[max_idx].label);
+    // Serial.print("\t\tCONFIDENCE: ");
+    // Serial.println(max_val);
+    // Serial.print("\t\tINDEX: ");
+    // Serial.println(max_idx);
+    // Serial.println("\tCLASS SELECTION: END");
     classification_flag = 0;
     hacking_flag = 1;
   }
@@ -485,7 +532,7 @@ void loop()
       }
     }
 
-    Serial.println("\tMOTOR CONTROL: START");
+    // Serial.println("\tMOTOR CONTROL: START");
     switch(max_idx)
     {
       case THUMB_IDX:
@@ -504,11 +551,11 @@ void loop()
         execute_finger_sequence(4);
         break;
       default:
-        Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
+        // Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
         break;
     }
-    Serial.println("\tMOTOR CONTROL: END");
-    Serial.println("<--- THE LOOP ENDS HERE --->");
+    // Serial.println("\tMOTOR CONTROL: END");
+    // Serial.println("<--- THE LOOP ENDS HERE --->");
     hacking_flag = 0;
   }
 }
