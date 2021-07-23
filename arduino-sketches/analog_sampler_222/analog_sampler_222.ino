@@ -328,7 +328,7 @@ int hacking_flag = 0;
 int debounce_flag = 0;
 
 void loop() 
-{  
+{
   float mav[5]={0,0,0,0,0};
   float temp_data = 0;
 
