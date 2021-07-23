@@ -361,7 +361,7 @@ void loop()
 
   filterData02( mav_sum);
 
-  float env_data[SIGNAL_LEN][N_CHANS]= {};
+  float env_data[SIGNAL_LEN][N_CHANS]= { };
   float mav_feat[5]={0,0,0,0,0};
   int feat_idx_count = 0;
 
