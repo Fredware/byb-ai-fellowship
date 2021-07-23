@@ -314,8 +314,6 @@ void setup()
   }
   // analog_read_time = millis();  //Initialize reference timestamp
   /* ----------------------------------------------------------------------- */
-  pinMode(SAMPLING_PIN, OUTPUT);
-  pinMode(DELAY_PIN, OUTPUT);
 }
 
 /******************************************************************************/
@@ -336,7 +334,6 @@ void loop()
 
   for (int i = 0; i < FRAME_LEN; i++)
   {
-    digitalWrite(SAMPLING_PIN, HIGH);
     for(int j = 0; j < N_CHANS; j++)
     {
       temp_data = analogRead(CH_01+j);
@@ -353,7 +350,7 @@ void loop()
     }
   }
 
-  filterData01(mav);
+  filterData01( mav);
 
   float mav_sum = 0;
     
@@ -367,7 +364,7 @@ void loop()
   Serial.print( " , ");
 
   float env_data[SIGNAL_LEN][N_CHANS]= {};
-  float mav_feat[5]={};
+  float mav_feat[5]={0,0,0,0,0};
   int feat_idx_count = 0;
 
   if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
@@ -396,7 +393,7 @@ void loop()
             mav_feat[j] += temp_data;
             if(k == FRAME_LEN -1)
             {
-              mav_feat[j] += alpha[j] * mav_feat[j];
+              mav_feat[j] *= alpha[j];
             }
           }
         }
@@ -407,11 +404,12 @@ void loop()
         {
           features[feat_idx_count] = filteredData03[j];
           feat_idx_count++;
+          mav_feat[j] = 0;
           filteredData03[j] = 0; 
         }
       }
       
-      for ( int i = 0; i < FEATURE_LEN; i++)
+      for ( int i = 0; i < N_CHANS * FEATURE_LEN; i++)
       {
         Serial.print(features[i]);
         Serial.print(" ");
