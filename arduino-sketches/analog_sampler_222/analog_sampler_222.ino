@@ -16,7 +16,6 @@
 #include <Servo.h>  // the servo library
 
 
-
 /* 200Hz Analog Sampler ---------------------------------------------------- */
 #define BAUD_RATE 115200
 #define SAMPLING_FREQ 222.2
@@ -68,16 +67,6 @@ unsigned long previousTime = 0;
 Servo myservo[SERVOS];
 /* ------------------------------------------------------------------------- */
 
-/* Circular Buffer ---------------------------------------------------- */
-//unsigned long analog_read_time;
-//
-//CircularBuffer<float, BUFFER_SIZE> buffer_ch01;
-//CircularBuffer<float, BUFFER_SIZE> buffer_ch02;
-//CircularBuffer<float, BUFFER_SIZE> buffer_ch03;
-//CircularBuffer<float, BUFFER_SIZE> buffer_ch04;
-//CircularBuffer<float, BUFFER_SIZE> buffer_ch05;
-/* ------------------------------------------------------------------------- */
-
 /* Dataset Statistics ------------------------------------------------------ */
 float means[5] = { -14614.78766535,
                    -11954.29539468, 
@@ -117,20 +106,6 @@ float features[] = {
 };
 /* ------------------------------------------------------------------------- */
 
-/* 200Hz Analog Sampler ---------------------------------------------------- */
-// bool debug_timer(void *){
-//   Serial.println("ANALOG SAMPLING: START");
-//   Serial.print("\tData: ");
-//   for (int chan=CH_01; chan <= CH_05; chan++){
-//     temp_data = analogRead(chan);
-//     Serial.print(temp_data);
-//     if( chan != CH_05) Serial.print(", ");
-//   }
-//   Serial.println();
-//   Serial.println("ANALOG SAMPLING: DONE");  
-//   return true;
-// }
-/* ------------------------------------------------------------------------- */
 
 /* Filtering --------------------------------------------------------------- */
 //filter formula can be found here:
@@ -229,11 +204,6 @@ int raw_feature_get_data(size_t offset, size_t length, float *out_ptr) {
     return 0;
 }
 
-/**
-* @brief      Printf function uses vsnprintf and output using Arduino Serial
-*
-* @param[in]  format     Variable argument list
-*/
 void ei_printf(const char *format, ...) 
 {
    static char print_buf[1024] = { 0 };
@@ -297,10 +267,31 @@ void execute_finger_sequence( int finger_idx)
 /*****************************************************************************/
 #define SAMPLING_PIN 3
 #define DELAY_PIN 4
+
+size_t max_idx = 0;
+
+int classification_flag = 0;
+int hacking_flag = 0;
+int debounce_flag = 0;
+float mav[5]={0,0,0,0,0};
+
+CircularBuffer<float, 2*FRAME_LEN> env_data_ch_01;
+CircularBuffer<float, 2*FRAME_LEN> env_data_ch_02;
+CircularBuffer<float, 2*FRAME_LEN> env_data_ch_03;
+CircularBuffer<float, 2*FRAME_LEN> env_data_ch_04;
+CircularBuffer<float, 2*FRAME_LEN> env_data_ch_05;
+
+CircularBuffer<float, FEATURE_LEN> filt_mav_ch_01;
+CircularBuffer<float, FEATURE_LEN> filt_mav_ch_02;
+CircularBuffer<float, FEATURE_LEN> filt_mav_ch_03;
+CircularBuffer<float, FEATURE_LEN> filt_mav_ch_04;
+CircularBuffer<float, FEATURE_LEN> filt_mav_ch_05;
+
 void setup() 
 {
   /* ----------------------------------------------------------------------- */
   Serial.begin( BAUD_RATE);
+  delay(10000);
   /* ----------------------------------------------------------------------- */
   for (int finger = 0; finger < SERVOS; finger++) moveFinger (finger, OPEN);  // Open Hand
   delay (1000);                                            // Wait for servos
@@ -312,8 +303,30 @@ void setup()
     alpha[i] = FRAME_LEN * stdevs[i] * norms[i];
     alpha[i] = 1.0 / alpha[i];
   }
-  // analog_read_time = millis();  //Initialize reference timestamp
   /* ----------------------------------------------------------------------- */
+  
+//  Serial.print("Expected: ");
+//  Serial.print(0);
+//  Serial.print(" Got: ");
+//  Serial.print(env_data_ch_01.size());
+//  Serial.print(" Capacity: ");
+//  Serial.println(env_data_ch_01.capacity);
+  for( int i = 0; i < FRAME_LEN; i++)
+  {
+    env_data_ch_01.push( analogRead( CH_01));
+    env_data_ch_02.push( analogRead( CH_02));
+    env_data_ch_03.push( analogRead( CH_03));
+    env_data_ch_04.push( analogRead( CH_04));
+    env_data_ch_05.push( analogRead( CH_05));
+    delayMicroseconds(3500);
+  }
+//  Serial.print("ERROR: Illegal buffer size. ");
+//  Serial.print("Expected: ");
+//  Serial.print(FRAME_LEN);
+//  Serial.print(" Got: ");
+//  Serial.print(env_data_ch_01.size());
+//  Serial.print(" Capacity: ");
+//  Serial.println(env_data_ch_01.capacity);
 }
 
 /******************************************************************************/
@@ -321,45 +334,130 @@ void setup()
 /************************************ LOOP ************************************/
 /******************************************************************************/
 /******************************************************************************/
-size_t max_idx = 0;
 
-int classification_flag = 0;
-int hacking_flag = 0;
-int debounce_flag = 0;
+float dummy = -0.25;
 
 void loop() 
 {
-  float mav[5]={0,0,0,0,0};
-  float temp_data = 0;
+  /***************************************************************************/
+//  Serial.println("I'm alive");
+  dummy *= -1;
+  Serial.print("clock:");
+  Serial.print(dummy+5);
+  Serial.print(" ");
+  
+  for( int i = 0; i < STEP_LEN; i++){
+    env_data_ch_01.push( analogRead( CH_01));
+    env_data_ch_02.push( analogRead( CH_02));
+    env_data_ch_03.push( analogRead( CH_03));
+    env_data_ch_04.push( analogRead( CH_04));
+    env_data_ch_05.push( analogRead( CH_05));
 
-  for (int i = 0; i < FRAME_LEN; i++)
-  {
-    for(int j = 0; j < N_CHANS; j++)
-    {
-      temp_data = analogRead(CH_01+j);
-      temp_data = temp_data - means[j];
-      temp_data = abs(temp_data);
-      mav[j]+= temp_data;
-      if( i == ( FRAME_LEN -1))
-      {
-        mav[j] *= alpha[j];
-      }
-    }
-    if( i < FRAME_LEN-1){
-      delay(4);
-    }
+    env_data_ch_01.shift();
+    env_data_ch_02.shift();
+    env_data_ch_03.shift();
+    env_data_ch_04.shift();
+    env_data_ch_05.shift();
+
+    delayMicroseconds(3500);
+  }  
+
+  if (env_data_ch_01.size() != FRAME_LEN){
+    Serial.print("ERROR: Illegal buffer size. ");
+    Serial.print("Expected: ");
+    Serial.print(FRAME_LEN);
+    Serial.print(" Got: ");
+    Serial.println(env_data_ch_01.size());
   }
 
-  filterData01( mav);
+  float temp = 0;
+  float mav_ch_01= 0;
+  float mav_ch_02= 0;
+  float mav_ch_03= 0;
+  float mav_ch_04= 0;
+  float mav_ch_05= 0;
 
-  float mav_sum = 0;
+  for( int i = 0; i < FRAME_LEN; i++)
+  {
+    temp = env_data_ch_01[i] - means[0];
+    mav_ch_01 += abs(temp);
+
+    temp = env_data_ch_02[i] - means[1];
+    mav_ch_02 += abs(temp);
+
+    temp = env_data_ch_03[i] - means[2];
+    mav_ch_03 += abs(temp);
+      
+    temp = env_data_ch_04[i] - means[3];
+    mav_ch_04 += abs(temp);
+     
+    temp = env_data_ch_05[i] - means[4];
+    mav_ch_05 += abs(temp);
+  }
+
+  mav[0] = mav_ch_01 * alpha[0];
+  mav[1] = mav_ch_02 * alpha[1];
+  mav[2] = mav_ch_03 * alpha[2];
+  mav[3] = mav_ch_04 * alpha[3];
+  mav[4] = mav_ch_05 * alpha[4];
+  
+  Serial.print("mav_ch_05:");
+  Serial.print(mav[4]);
+  Serial.print(" ");
+
+  filterData01(mav);
+
+  filt_mav_ch_01.push( filteredData01[0]);
+  filt_mav_ch_02.push( filteredData01[1]);
+  filt_mav_ch_03.push( filteredData01[2]);
+  filt_mav_ch_04.push( filteredData01[3]);
+  filt_mav_ch_05.push( filteredData01[4]);
+
+  Serial.print("filt_mav_ch_05:");
+  Serial.print(filt_mav_ch_05.last());
+  Serial.print(" ");
+
+  float mav_sum = filteredData01[0] + filteredData01[1] + filteredData01[2] + filteredData01[3] + filteredData01[4];
+  Serial.print("mav_sum:");
+  Serial.print(mav_sum);
+  Serial.print(" ");
     
-  for( int j = 0; j < N_CHANS; j++)
-  {
-    mav_sum += filteredData01[j]; 
-  }
+  filterData02(mav_sum);
+  Serial.print("filt_mav_sum:");
+  Serial.print(filteredData02);
+  Serial.print(" ");
 
-  filterData02( mav_sum);
+  Serial.print("Threshold:");
+  Serial.println(THRESHOLD);
+  /***************************************************************************/
+  // for (int i = 0; i < FRAME_LEN; i++)
+  // {
+  //   for(int j = 0; j < N_CHANS; j++)
+  //   {
+  //     temp_data = analogRead(CH_01+j);
+  //     temp_data = temp_data - means[j];
+  //     temp_data = abs(temp_data);
+  //     mav[j]+= temp_data;
+  //     if( i == ( FRAME_LEN -1))
+  //     {
+  //       mav[j] *= alpha[j];
+  //     }
+  //   }
+  //   if( i < FRAME_LEN-1){
+  //     delay(4);
+  //   }
+  // }
+
+  // filterData01( mav);
+
+  // float mav_sum = 0;
+    
+  // for( int j = 0; j < N_CHANS; j++)
+  // {
+  //   mav_sum += filteredData01[j]; 
+  // }
+
+  // filterData02( mav_sum);
 
   float env_data[SIGNAL_LEN][N_CHANS]= { };
   float mav_feat[5]={0,0,0,0,0};
@@ -370,42 +468,56 @@ void loop()
   {
     if( filteredData02 > THRESHOLD)
     {
-      for ( int i = 0; i < SIGNAL_LEN; i++)
-      {
-        for( int j = 0; j < N_CHANS; j++)
-        {
-          env_data[i][j] = analogRead( CH_01+j);
-        }
-        delay(4);
+      /************************************************************************/
+      for( int i = 0; i < FEATURE_LEN; i++){
+        features[feat_idx_count] = filt_mav_ch_01 [i];
+        feat_idx_count++;
+        features[feat_idx_count] = filt_mav_ch_02 [i];
+        feat_idx_count++;
+        features[feat_idx_count] = filt_mav_ch_03 [i];
+        feat_idx_count++;
+        features[feat_idx_count] = filt_mav_ch_04 [i];
+        feat_idx_count++;
+        features[feat_idx_count] = filt_mav_ch_05 [i];
+        feat_idx_count++;
       }
+      /************************************************************************/
+      // for ( int i = 0; i < SIGNAL_LEN; i++)
+      // {
+      //   for( int j = 0; j < N_CHANS; j++)
+      //   {
+      //     env_data[i][j] = analogRead( CH_01+j);
+      //   }
+      //   delay(4);
+      // }
       
-      for( int i = 0; i < FEATURE_LEN; i++)
-      {
-        for ( int k = i * STEP_LEN; k < i * STEP_LEN + FRAME_LEN; k++)
-        {
-          for (int j = 0; j < N_CHANS; j++)
-          {
-            temp_data = env_data[k][j];
-            temp_data = temp_data - means[j];
-            temp_data = abs( temp_data);
-            mav_feat[j] += temp_data;
-            if(k == FRAME_LEN -1)
-            {
-              mav_feat[j] *= alpha[j];
-            }
-          }
-        }
+      // for( int i = 0; i < FEATURE_LEN; i++)
+      // {
+      //   for ( int k = i * STEP_LEN; k < i * STEP_LEN + FRAME_LEN; k++)
+      //   {
+      //     for (int j = 0; j < N_CHANS; j++)
+      //     {
+      //       temp_data = env_data[k][j];
+      //       temp_data = temp_data - means[j];
+      //       temp_data = abs( temp_data);
+      //       mav_feat[j] += temp_data;
+      //       if(k == FRAME_LEN -1)
+      //       {
+      //         mav_feat[j] *= alpha[j];
+      //       }
+      //     }
+      //   }
         
-        filterData03(mav_feat);
+      //   filterData03(mav_feat);
         
-        for(int j = 0; j<N_CHANS;j++)
-        {
-          features[feat_idx_count] = filteredData03[j];
-          feat_idx_count++;
-          mav_feat[j] = 0;
-          filteredData03[j] = 0; 
-        }
-      }
+      //   for(int j = 0; j<N_CHANS;j++)
+      //   {
+      //     features[feat_idx_count] = filteredData03[j];
+      //     feat_idx_count++;
+      //     mav_feat[j] = 0;
+      //     filteredData03[j] = 0; 
+      //   }
+      // }
       classification_flag = 1;
       debounce_flag = 1;
     }
@@ -445,6 +557,7 @@ void loop()
     classification_flag = 0;
     hacking_flag = 1;
   }
+
   if ( hacking_flag > 0)
   {
     /* ------------------------------------------------------------------------- */
@@ -478,5 +591,21 @@ void loop()
         break;
     }
     hacking_flag = 0;
+
+    env_data_ch_01.clear();
+    env_data_ch_02.clear();
+    env_data_ch_03.clear();
+    env_data_ch_04.clear();
+    env_data_ch_05.clear();    
+
+    for( int i = 0; i < FRAME_LEN; i++)
+    {
+      env_data_ch_01.push( analogRead( CH_01));
+      env_data_ch_02.push( analogRead( CH_02));
+      env_data_ch_03.push( analogRead( CH_03));
+      env_data_ch_04.push( analogRead( CH_04));
+      env_data_ch_05.push( analogRead( CH_05));
+      delayMicroseconds(3500);
+    }
   }
 }
