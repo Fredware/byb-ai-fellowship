@@ -251,10 +251,10 @@ void execute_finger_sequence( int finger_idx)
 {
   int period_ms = 1000;
   moveFinger (finger_idx, CLOSE);
-  Serial.println("\t\tHAND STATUS: CLOSED");
+  Serial.println("\t\tHAND STATUS:CLOSED");
   delay(period_ms);
   moveFinger (finger_idx, OPEN);
-  Serial.println("\t\tHAND STATUS: OPEN");
+  Serial.println("\t\tHAND STATUS:OPEN");
   delay(period_ms);
   return;
 }
@@ -342,9 +342,9 @@ void loop()
   /***************************************************************************/
 //  Serial.println("I'm alive");
   dummy *= -1;
-  Serial.print("clock:");
-  Serial.print(dummy+5);
-  Serial.print(" ");
+//  Serial.print("clock:");
+//  Serial.print(dummy+5);
+//  Serial.print(" ");
   
   for( int i = 0; i < STEP_LEN; i++){
     env_data_ch_01.push( analogRead( CH_01));
@@ -401,9 +401,9 @@ void loop()
   mav[3] = mav_ch_04 * alpha[3];
   mav[4] = mav_ch_05 * alpha[4];
   
-  Serial.print("mav_ch_05:");
-  Serial.print(mav[4]);
-  Serial.print(" ");
+//  Serial.print("mav_ch_05:");
+//  Serial.print(mav[4]);
+//  Serial.print(" ");
 
   filterData01(mav);
 
@@ -413,22 +413,22 @@ void loop()
   filt_mav_ch_04.push( filteredData01[3]);
   filt_mav_ch_05.push( filteredData01[4]);
 
-  Serial.print("filt_mav_ch_05:");
-  Serial.print(filt_mav_ch_05.last());
-  Serial.print(" ");
+//  Serial.print("filt_mav_ch_05:");
+  Serial.println(filt_mav_ch_05.last());
+//  Serial.print(" ");
 
   float mav_sum = filteredData01[0] + filteredData01[1] + filteredData01[2] + filteredData01[3] + filteredData01[4];
-  Serial.print("mav_sum:");
-  Serial.print(mav_sum);
-  Serial.print(" ");
+//  Serial.print("mav_sum:");
+//  Serial.print(mav_sum);
+//  Serial.print(" ");
     
   filterData02(mav_sum);
-  Serial.print("filt_mav_sum:");
-  Serial.print(filteredData02);
-  Serial.print(" ");
+//  Serial.print("filt_mav_sum:");
+//  Serial.print(filteredData02);
+//  Serial.print(" ");
 
-  Serial.print("Threshold:");
-  Serial.println(THRESHOLD);
+//  Serial.print("Threshold:");
+//  Serial.println(THRESHOLD);
   /***************************************************************************/
   // for (int i = 0; i < FRAME_LEN; i++)
   // {
@@ -481,6 +481,19 @@ void loop()
         features[feat_idx_count] = filt_mav_ch_05 [i];
         feat_idx_count++;
       }
+
+      Serial.println(filt_mav_ch_05[0]);
+      Serial.println(filt_mav_ch_05[1]);
+      Serial.println(filt_mav_ch_05[2]);
+      Serial.println(filt_mav_ch_05[3]);
+      Serial.println(filt_mav_ch_05[4]);
+      Serial.println(filt_mav_ch_05[5]);
+      Serial.println(filt_mav_ch_05[6]);
+      Serial.println(filt_mav_ch_05[7]);
+      Serial.println(filt_mav_ch_05[8]);
+      Serial.println(filt_mav_ch_05[9]);
+      Serial.println(filt_mav_ch_05[10]);
+      
       /************************************************************************/
       // for ( int i = 0; i < SIGNAL_LEN; i++)
       // {
