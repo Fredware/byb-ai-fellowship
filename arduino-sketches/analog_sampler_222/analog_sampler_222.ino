@@ -32,8 +32,8 @@
 #define FEATURE_LEN 11
 #define SIGNAL_LEN 80
 #define STEP_LEN 6
-#define THRESHOLD 7.15
-#define D_THRESHOLD 7.05
+#define THRESHOLD 6.94
+#define D_THRESHOLD 6.92
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -413,13 +413,13 @@ void loop()
   filt_mav_ch_04.push( filteredData01[3]);
   filt_mav_ch_05.push( filteredData01[4]);
 
-//  Serial.print("filt_mav_ch_05:");
-  Serial.println(filt_mav_ch_05.last());
-//  Serial.print(" ");
+  Serial.print("filt_mav_ch_05:");
+  Serial.print(filt_mav_ch_05.last());
+  Serial.print(" ");
 
   float mav_sum = filteredData01[0] + filteredData01[1] + filteredData01[2] + filteredData01[3] + filteredData01[4];
-//  Serial.print("mav_sum:");
-//  Serial.print(mav_sum);
+  Serial.print("mav_sum:");
+  Serial.println(mav_sum);
 //  Serial.print(" ");
     
   filterData02(mav_sum);
@@ -586,21 +586,26 @@ void loop()
     {
       case THUMB_IDX:
         execute_finger_sequence(0);
+        Serial.println("THUMB");
         break;
       case INDEX_IDX:
         execute_finger_sequence(1); 
+        Serial.println("INDEX");
         break;
       case MIDDLE_IDX:
         execute_finger_sequence(2);
+        Serial.println("MIDDLE");
         break;
       case RING_IDX:
         execute_finger_sequence(3);
+        Serial.println("RING");
         break;
       case PINKY_IDX:
         execute_finger_sequence(4);
+        Serial.println("PINKY");
         break;
       default:
-        // Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
+         Serial.println("ERROR DURING MOTOR CONTROL (x_x)");
         break;
     }
     hacking_flag = 0;
