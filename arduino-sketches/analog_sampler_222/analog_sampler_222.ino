@@ -10,7 +10,7 @@
 /*******/
 /* Includes ---------------------------------------------------------------- */
 #include "CircularBuffer.h"
-#include <a5c5f-env-norm-55-007_inferencing.h>
+#include <final-60-cnt-75-bpm_inferencing.h>
 #include <arduino-timer.h>
 #include <Arduino_LSM9DS1.h>
 #include <Servo.h>  // the servo library
@@ -32,8 +32,8 @@
 #define FEATURE_LEN 11
 #define SIGNAL_LEN 80
 #define STEP_LEN 6
-#define THRESHOLD 6.94
-#define D_THRESHOLD 6.92
+#define THRESHOLD 5.42
+#define D_THRESHOLD 5.40
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -68,21 +68,26 @@ Servo myservo[SERVOS];
 /* ------------------------------------------------------------------------- */
 
 /* Dataset Statistics ------------------------------------------------------ */
-float means[5] = { -14614.78766535,
-                   -11954.29539468, 
-                   -14115.51905832, 
-                   -14441.05551792, 
-                   -14464.99905807};
-float stdevs[5] = { 1495.1199467,
-                    1343.30603843,
-                    2043.12148758,
-                    1353.73643992,
-                    386.24717924};
-float norms[5] = { 16.91287963,
-                   15.46845307,
-                   12.58684762,
-                   16.86506427,
-                   8.17662202};
+float means[5] = {  -14981.99126183,
+                    -13654.12631764,
+                    -14984.48305868,
+                    -14959.8678141,
+                    -14918.0262762 
+                   };
+                   
+float stdevs[5] = { 812.04329766,
+                    1047.52521342,
+                    983.01285649,
+                    729.65068678,
+                    567.31313359
+                    };
+                    
+float norms[5] = {  19.3109078,
+                    12.60333107,
+                    15.97880014,
+                    18.40316676,
+                    19.84070697
+                    };
 
 float alpha[5];
 /* ------------------------------------------------------------------------- */
@@ -95,17 +100,17 @@ uint32_t temp_data;
 
 /* Inference Model --------------------------------------------------------- */
 // static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
-float features[] = {
-    // copy raw features here (for example from the 'Live classification' page)
-    // see https://docs.edgeimpulse.com/docs/running-your-impulse-arduino
-    -0.3809, -0.4746, -0.5160, -0.5489, -0.8806, -0.3134, -0.4810, -0.0593, -0.5490, -0.7550, -0.2870,
-    -0.3899, 0.4217, -0.5493, -0.8335, -0.2843, -0.4189, 1.9378, -0.4997, -1.0188, -0.3034, -0.6140,
-    3.7326, -0.2669, -1.0113, -0.1515, -0.5053, 4.4153, 0.0351, -0.4798, 0.1105, -0.4794, 5.5325,
-    2.6580, 0.1328, 0.2387, -0.3932, 5.7938, 4.0086, 0.3559, 0.4816, -0.0272, 6.1214, 4.4982, 
-    1.1336, 1.0228, 0.1696, 5.7815, 3.3322, 1.6830, 1.4567, 0.4759, 5.5055, 2.2049, 2.8162
-};
+//float features[] = {
+//    // copy raw features here (for example from the 'Live classification' page)
+//    // see https://docs.edgeimpulse.com/docs/running-your-impulse-arduino
+//    -0.3809, -0.4746, -0.5160, -0.5489, -0.8806, -0.3134, -0.4810, -0.0593, -0.5490, -0.7550, -0.2870,
+//    -0.3899, 0.4217, -0.5493, -0.8335, -0.2843, -0.4189, 1.9378, -0.4997, -1.0188, -0.3034, -0.6140,
+//    3.7326, -0.2669, -1.0113, -0.1515, -0.5053, 4.4153, 0.0351, -0.4798, 0.1105, -0.4794, 5.5325,
+//    2.6580, 0.1328, 0.2387, -0.3932, 5.7938, 4.0086, 0.3559, 0.4816, -0.0272, 6.1214, 4.4982, 
+//    1.1336, 1.0228, 0.1696, 5.7815, 3.3322, 1.6830, 1.4567, 0.4759, 5.5055, 2.2049, 2.8162
+//};
 /* ------------------------------------------------------------------------- */
-
+float features [55] = {0};
 
 /* Filtering --------------------------------------------------------------- */
 //filter formula can be found here:
@@ -413,6 +418,12 @@ void loop()
   filt_mav_ch_04.push( filteredData01[3]);
   filt_mav_ch_05.push( filteredData01[4]);
 
+  Serial.print("filt_mav_ch_01:");
+  Serial.print(filt_mav_ch_01.last());
+  Serial.print(" ");
+  Serial.print("filt_mav_ch_03:");
+  Serial.print(filt_mav_ch_03.last());
+  Serial.print(" ");
   Serial.print("filt_mav_ch_05:");
   Serial.print(filt_mav_ch_05.last());
   Serial.print(" ");
@@ -459,15 +470,15 @@ void loop()
 
   // filterData02( mav_sum);
 
-  float env_data[SIGNAL_LEN][N_CHANS]= { };
-  float mav_feat[5]={0,0,0,0,0};
-  int feat_idx_count = 0;
+//  float env_data[SIGNAL_LEN][N_CHANS]= { };
+//  float mav_feat[5]={0,0,0,0,0};
 
   if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
   if( debounce_flag < 1)
   {
     if( filteredData02 > THRESHOLD)
     {
+      int feat_idx_count = 0;
       /************************************************************************/
       for( int i = 0; i < FEATURE_LEN; i++){
         features[feat_idx_count] = filt_mav_ch_01 [i];
@@ -566,6 +577,9 @@ void loop()
         max_val = result.classification[i].value;
         max_idx = i;
       }
+      Serial.print(result.classification[i].label);
+      Serial.print(" ");
+      Serial.println(result.classification[i].value);
     }
     classification_flag = 0;
     hacking_flag = 1;
