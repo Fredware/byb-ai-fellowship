@@ -2,7 +2,8 @@ import serial
 from struct import unpack
 
 # setup
-N_EVENTS = 5
+FINGER_NAME = 'pinky'
+N_EVENTS = 50
 arduino_port = "COM10"
 baud = 115200
 
@@ -25,6 +26,6 @@ for event in range(N_EVENTS):
             str_element = str_element + ','
             csv_buff.append(str_element)
     
-    print("Got it!")   
-    with open(f'thumb_data_{event}.csv', 'w') as file:
+    print(f'Got {event} out of {N_EVENTS}')   
+    with open(f'{FINGER_NAME}_data_{50+event}.csv', 'w') as file:
         file.writelines(csv_buff)

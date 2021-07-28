@@ -33,8 +33,8 @@
 #define STEP_LEN 6
 #define FEATURE_LEN 11
 
-#define THRESHOLD 1.3275
-#define D_THRESHOLD 1.3260
+#define THRESHOLD 0.2065
+#define D_THRESHOLD 0.1375
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -61,11 +61,14 @@ unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used t
 Servo myservo[SERVOS];
 
 /* Dataset Statistics ------------------------------------------------------ */
-const float means[5] = {  -14981.99126183,
-                    -13654.12631764,
-                    -14984.48305868,
-                    -14959.8678141,
-                    -14918.0262762 
+//const float means[5] = {  -14981.99126183,
+//                    -13654.12631764,
+//                    -14984.48305868,
+//                    -14959.8678141,
+//                    -14918.0262762 
+//                   };
+
+const float means[5] = {1.712837838,  90.64527027, 0.9189189189,  7.945945946, 1.722972973
                    };
                    
 const float stdevs[5] = { 812.04329766,
@@ -75,12 +78,16 @@ const float stdevs[5] = { 812.04329766,
                     567.31313359
                     };
               
-const float norms[5] = {  19.3109078,
-                    12.60333107,
-                    15.97880014,
-                    18.40316676,
-                    19.84070697
-                    };
+//const float norms[5] = {  19.3109078,
+//                    12.60333107,
+//                    15.97880014,
+//                    18.40316676,
+//                    19.84070697
+//                    };
+
+                    
+
+const float norms[5] = { 516.29,  932.35,  547.08,  966.05,  1021.28};
 
 float alpha[5];
 
@@ -188,12 +195,12 @@ void setup() {
   
   for( int i = 0; i < FRAME_LEN; i++){
     for( int chan = 0; chan < N_CHANS; chan++){
-      env_data_buff[chan].push( analogRead( CH_01 + chan));
+      env_data_buff[chan].push( analogRead( CH_01 + chan) - means[chan]);
     }
     delayMicroseconds(SAMPLING_DELAY);
   }
 }
-
+int dummy = -1;
 /******************************************************************************/
 /************************************ LOOP ************************************/
 /******************************************************************************/
@@ -202,6 +209,7 @@ void loop() {
     for( int chan = 0; chan < N_CHANS; chan++){ 
       env_data_buff[chan].push( analogRead( CH_01 + chan));
     }
+    
     for( int chan = 0; chan < N_CHANS; chan++){
       env_data_buff[chan].shift();
     }
@@ -229,24 +237,32 @@ void loop() {
   for( int chan = 0; chan < N_CHANS; chan++){
     mav_feat[chan] = temp_sum[chan] * alpha[chan];
     mav_feats_buff[chan].push( mav_feat[chan]);
+    Serial.print(mav_feats_buff[chan].last());
+    Serial.print(", ");
   }
+//  Serial.println();
   
   filterData01(mav_feat);
 
   float mav_filt_sum = 0;
   for( int chan = 0; chan < N_CHANS; chan++){
-    mav_filt_sum = filteredData01[chan];
+    mav_filt_sum += filteredData01[chan];
   }
      
-  filterData02( mav_filt_sum);
-
+//  filterData02( mav_filt_sum);
+  dummy = dummy * -1;
+  Serial.print(dummy);
+  Serial.print(" ");
+//
 //  Serial.print("filtered_sum:");
-//  Serial.println(mav_filt_sum, 4);
+  Serial.println(mav_filt_sum, 4);
 
-  if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
+//  if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
+  if (mav_filt_sum < D_THRESHOLD) debounce_flag = 0;
   
   if( debounce_flag < 1){
-    if( filteredData02 >= THRESHOLD){
+//    if( filteredData02 >= THRESHOLD){
+      if (mav_filt_sum >= THRESHOLD){
 
 
       int feat_idx_count = 0;
@@ -257,7 +273,7 @@ void loop() {
         }
       }
 
-      Serial.write( (byte *) &features, 55*4);
+//      Serial.write( (byte *) &features, 55*4);
       classification_flag = 1;
       debounce_flag = 1;
     }
@@ -339,7 +355,7 @@ void loop() {
 void compute_alpha_coeffs(){
   for( int i = 0; i < N_CHANS; i++)
   {
-    alpha[i] = FRAME_LEN * stdevs[i] * norms[i];
+    alpha[i] = FRAME_LEN  * norms[i];
     alpha[i] = 1.0 / alpha[i];
   }
 }
