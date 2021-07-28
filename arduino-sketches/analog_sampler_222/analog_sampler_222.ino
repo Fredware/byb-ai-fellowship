@@ -33,8 +33,8 @@
 #define STEP_LEN 6
 #define FEATURE_LEN 11
 
-#define THRESHOLD 1.328
-#define D_THRESHOLD 1.326
+#define THRESHOLD 1.3275
+#define D_THRESHOLD 1.3260
 
 /* Motor Control ----------------------------------------------------------- */
 #define THUMB_IDX 4
@@ -241,19 +241,14 @@ void loop() {
   filterData02( mav_filt_sum);
 
 //  Serial.print("filtered_sum:");
-//  Serial.println(mav_filt_sum, 6);
+//  Serial.println(mav_filt_sum, 4);
 
   if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
   
   if( debounce_flag < 1){
     if( filteredData02 >= THRESHOLD){
 
-      Serial.println("Features before:");
-      for(int i=0; i<55; i++){
-        Serial.print(features[i], 7);
-        Serial.print(" ");
-      }
-      
+
       int feat_idx_count = 0;
       for( int i = 0; i < FEATURE_LEN; i++){
         for (int chan = 0; chan < N_CHANS; chan++){
@@ -262,13 +257,7 @@ void loop() {
         }
       }
 
-      Serial.println("Features after:");
-      for(int i=0; i<55; i++){
-        Serial.print(features[i], 7);
-        Serial.print(" ");
-      }
-      Serial.println();
-//      Serial.write( (byte *) &features, 55*4);
+      Serial.write( (byte *) &features, 55*4);
       classification_flag = 1;
       debounce_flag = 1;
     }
@@ -298,9 +287,9 @@ void loop() {
         max_val = result.classification[i].value;
         max_idx = i;
       }
-      Serial.print(result.classification[i].label);
-      Serial.print(" ");
-      Serial.println(result.classification[i].value);
+//      Serial.print(result.classification[i].label);
+//      Serial.print(" ");
+//      Serial.println(result.classification[i].value);
     }
     classification_flag = 0;
     hacking_flag = 1;
@@ -408,11 +397,11 @@ void execute_finger_sequence( int finger_idx){
   int period_ms = 1000;
   
   moveFinger (finger_idx, CLOSE);
-  Serial.print("Flexing: ");
-  Serial.println(finger_labels[finger_idx]);
+//  Serial.print("Flexing: ");
+//  Serial.println(finger_labels[finger_idx]);
   delay(period_ms);
   moveFinger (finger_idx, OPEN);
-  Serial.print("Relaxing: ");
-  Serial.println(finger_labels[finger_idx]);
+//  Serial.print("Relaxing: ");
+//  Serial.println(finger_labels[finger_idx]);
   delay(period_ms);
 }
