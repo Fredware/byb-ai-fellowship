@@ -10,7 +10,7 @@
 
 /* Libraries ---------------------------------------------------------------- */
 #include "CircularBuffer.h"
-#include <final-60-cnt-75-bpm_inferencing.h>
+#include <final_v3_nano_55_inferencing.h>
 #include <arduino-timer.h>
 #include <Arduino_LSM9DS1.h>
 #include <Servo.h>
@@ -61,13 +61,6 @@ unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used t
 Servo myservo[SERVOS];
 
 /* Dataset Statistics ------------------------------------------------------ */
-//const float means[5] = {  -14981.99126183,
-//                    -13654.12631764,
-//                    -14984.48305868,
-//                    -14959.8678141,
-//                    -14918.0262762 
-//                   };
-
 const float means[5] = {1.712837838,  90.64527027, 0.9189189189,  7.945945946, 1.722972973
                    };
                    
@@ -78,15 +71,6 @@ const float stdevs[5] = { 812.04329766,
                     567.31313359
                     };
               
-//const float norms[5] = {  19.3109078,
-//                    12.60333107,
-//                    15.97880014,
-//                    18.40316676,
-//                    19.84070697
-//                    };
-
-                    
-
 const float norms[5] = { 516.29,  932.35,  547.08,  966.05,  1021.28};
 
 float alpha[5];
@@ -195,7 +179,7 @@ void setup() {
   
   for( int i = 0; i < FRAME_LEN; i++){
     for( int chan = 0; chan < N_CHANS; chan++){
-      env_data_buff[chan].push( analogRead( CH_01 + chan) - means[chan]);
+      env_data_buff[chan].push( analogRead( CH_01 + chan));
     }
     delayMicroseconds(SAMPLING_DELAY);
   }
@@ -237,8 +221,8 @@ void loop() {
   for( int chan = 0; chan < N_CHANS; chan++){
     mav_feat[chan] = temp_sum[chan] * alpha[chan];
     mav_feats_buff[chan].push( mav_feat[chan]);
-    Serial.print(mav_feats_buff[chan].last());
-    Serial.print(", ");
+//    Serial.print(mav_feats_buff[chan].last());
+//    Serial.print(", ");
   }
 //  Serial.println();
   
@@ -251,11 +235,11 @@ void loop() {
      
 //  filterData02( mav_filt_sum);
   dummy = dummy * -1;
-  Serial.print(dummy);
-  Serial.print(" ");
-//
+//  Serial.print(dummy);
+//  Serial.print(" ");
+////
 //  Serial.print("filtered_sum:");
-  Serial.println(mav_filt_sum, 4);
+//  Serial.println(mav_filt_sum, 4);
 
 //  if( filteredData02 < D_THRESHOLD) debounce_flag = 0;
   if (mav_filt_sum < D_THRESHOLD) debounce_flag = 0;
@@ -303,9 +287,9 @@ void loop() {
         max_val = result.classification[i].value;
         max_idx = i;
       }
-//      Serial.print(result.classification[i].label);
-//      Serial.print(" ");
-//      Serial.println(result.classification[i].value);
+      Serial.print(result.classification[i].label);
+      Serial.print(" ");
+      Serial.println(result.classification[i].value);
     }
     classification_flag = 0;
     hacking_flag = 1;
@@ -413,11 +397,11 @@ void execute_finger_sequence( int finger_idx){
   int period_ms = 1000;
   
   moveFinger (finger_idx, CLOSE);
-//  Serial.print("Flexing: ");
-//  Serial.println(finger_labels[finger_idx]);
+  Serial.print("Flexing: ");
+  Serial.println(finger_labels[finger_idx]);
   delay(period_ms);
   moveFinger (finger_idx, OPEN);
-//  Serial.print("Relaxing: ");
-//  Serial.println(finger_labels[finger_idx]);
+  Serial.print("Relaxing: ");
+  Serial.println(finger_labels[finger_idx]);
   delay(period_ms);
 }
