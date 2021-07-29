@@ -2,8 +2,8 @@ import serial
 from struct import unpack
 
 # setup
-FINGER_NAME = 'pinky'
 SESSION = 3
+FINGER_NAME = 'pinky'
 
 N_EVENTS = 55
 arduino_port = "COM10"
