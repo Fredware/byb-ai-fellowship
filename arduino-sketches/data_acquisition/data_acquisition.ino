@@ -32,6 +32,7 @@
 #define FRAME_LEN 20
 #define STEP_LEN 6
 #define FEATURE_LEN 11
+#define FEATURE_BYTESIZE 4 // An arduino float has a size of 4 bytes
 
 #define THRESHOLD 0.2065
 #define D_THRESHOLD 0.1375
@@ -194,7 +195,8 @@ void loop() {
           feat_idx_count++;
         }
       }
-      Serial.write( (byte *) &features, 55*4);
+      /*Send a number of bytes equal to the size of the flattened features*/
+      Serial.write( (byte *) &features, N_CHANS*FEATURE_LEN*FEATURE_BYTESIZE);
       classification_flag = 1;
       debounce_flag = 1;
     }
