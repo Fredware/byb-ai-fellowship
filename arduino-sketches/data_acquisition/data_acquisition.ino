@@ -75,6 +75,14 @@ float features [55] = {0};
  *                 y[n] = a0*x[n] + a1*x[n-1] + a2*x[n-2] – b1*y[n-1] – b2*y[n-2]
  * coefficient calculator: https://www.earlevel.com/main/2013/10/13/biquad-calculator-v2/
 */
+/*
+ * Parameters for Biquad Calculator
+ * Lowpass filter
+ * 222.2 Hz Sample Rate
+ * 8 Hz Cutoff frequency
+ * 0.7071 Q
+ * 6 dB gain.
+*/
 const float a0 = 0.010995248654511658;
 const float a1 = 0.021990497309023315;
 const float a2 = 0.010995248654511658;
