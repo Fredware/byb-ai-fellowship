@@ -62,13 +62,13 @@ unsigned long tmsServo_Attached[SERVOS]; // time since last servo attach. Used t
 Servo myservo[SERVOS];
 
 /* Dataset Statistics ------------------------------------------------------ */
-const float means[5] = { 1.712837838,  90.64527027, 0.9189189189,  7.945945946, 1.722972973};
-const float norms[5] = { 516.29,  932.35,  547.08,  966.05,  1021.28};
+const float means[N_CHANS] = { 1.712837838,  90.64527027, 0.9189189189,  7.945945946, 1.722972973};
+const float norms[N_CHANS] = { 516.29,  932.35,  547.08,  966.05,  1021.28};
 
-float alpha_coeffs[5];
+float alpha_coeffs[N_CHANS];
 
 /* Inference Model --------------------------------------------------------- */
-float features [55] = {0};
+float features [N_CHANS * FEATURE_LEN] = {0};
 
 /* Filtering --------------------------------------------------------------- 
  * filter formula: https://www.earlevel.com/main/2003/02/28/biquads/
@@ -91,7 +91,7 @@ const float b2 = 0.7262205784457494;
 
 float x[N_CHANS][3];
 float y[N_CHANS][2];
-float filteredData01[5];
+float filteredData01[N_CHANS];
 
 // call this on each new sample
 void filterData01( float newValue[]){
@@ -203,7 +203,7 @@ void loop() {
           feat_idx_count++;
         }
       }
-      /*Send a number of bytes equal to the size of the flattened features*/
+      /*Send a number of bytes equal to the size of the flattened features buffer*/
       Serial.write( (byte *) &features, N_CHANS*FEATURE_LEN*FEATURE_BYTESIZE);
       classification_flag = 1;
       debounce_flag = 1;
